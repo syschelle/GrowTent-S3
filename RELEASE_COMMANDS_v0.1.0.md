@@ -7,7 +7,7 @@ Use these commands from the local `GrowTent-S3` project folder.
 ```bash
 git remote set-url origin https://github.com/syschelle/GrowTent-S3.git
 git add -A
-git commit -m "Initial ESP32-S3 Relay 6CH firmware"
+git commit -m "Initial ESP32-S3 Relay 6CH firmware with pumps 4-6"
 git push -u origin main
 ```
 

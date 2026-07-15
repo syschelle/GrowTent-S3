@@ -141,7 +141,7 @@ bool espMode = false;
 bool relaySchedulesEnabled[NUM_RELAYS] = {false};
 int  relaySchedulesStart[NUM_RELAYS] = {0};
 int  relaySchedulesEnd[NUM_RELAYS] = {0};
-String relayNames[NUM_RELAYS] = {"relay 1","relay 2","relay 3","relay 4,","relay 5","relay 6","relay 7","relay 8"};
+String relayNames[NUM_RELAYS] = {"Relay 1","Relay 2","Relay 3","Pumpe 1","Pumpe 2","Pumpe 3","relay 7","relay 8"};
 
 // Irrigation
 Irrigation irrigation;

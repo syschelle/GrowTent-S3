@@ -150,39 +150,39 @@ const char* htmlPage = R"rawliteral(
 
     <h2 data-i18n="status.relayControl">Relais Steuerung</h2>
     <div class="relay-row" id="relayRow">
-      <div class="relay-card" data-relay="1">
+      <div class="relay-card relay-normal" data-relay="1" id="relayCard1">
         <div class="relay-title">%RELAYNAMES1%</div>
-        <div class="relay-status" id="relay-Status1"></div>
+        <div class="relay-status" id="relay-Status1" data-relay-status="1"></div>
         <div class="spacer"></div>
         <button class="primary" data-i18n="status.toggleRelay" onclick="toggleRelay(1)">Toggle</button>
       </div>
-      <div class="relay-card" data-relay="2">
+      <div class="relay-card relay-normal" data-relay="2" id="relayCard2">
         <div class="relay-title">%RELAYNAMES2%</div>
-        <div class="relay-status" id="relay-Status2"></div>
+        <div class="relay-status" id="relay-Status2" data-relay-status="2"></div>
         <div class="spacer"></div>
         <button class="primary" data-i18n="status.toggleRelay" onclick="toggleRelay(2)">Toggle</button>
       </div>
-      <div class="relay-card" data-relay="3">
+      <div class="relay-card relay-normal" data-relay="3" id="relayCard3">
         <div class="relay-title">%RELAYNAMES3%</div>
-        <div class="relay-status" id="relay-Status3"></div>
+        <div class="relay-status" id="relay-Status3" data-relay-status="3"></div>
         <div class="spacer"></div>
         <button class="primary" data-i18n="status.toggleRelay" onclick="toggleRelay(3)">Toggle</button>
       </div>
-      <div class="relay-card" data-relay="4">
+      <div class="relay-card relay-normal" data-relay="4" id="relayCard4" style="display:none;">
         <div class="relay-title">%RELAYNAMES4%</div>
-        <div class="relay-status" id="relay-Status4"></div>
+        <div class="relay-status" id="relay-Status4" data-relay-status="4"></div>
         <div class="spacer"></div>
         <button class="primary" data-i18n="status.toggleRelay" onclick="toggleRelay(4)">Toggle</button>
       </div>
-      <div class="relay-card relay-extra" data-relay="5" id="relayCard5" style="display:none;">
+      <div class="relay-card relay-normal relay-extra" data-relay="5" id="relayCard5" style="display:none;">
         <div class="relay-title">%RELAYNAMES5%</div>
-        <div class="relay-status" id="relay-Status5"></div>
+        <div class="relay-status" id="relay-Status5" data-relay-status="5"></div>
         <div class="spacer"></div>
         <button class="primary" data-i18n="status.toggleRelay" onclick="toggleRelay(5)">Toggle</button>
       </div>
-      <div class="relay-card relay-extra" data-relay="6" id="relayCard6" style="display:none;">
+      <div class="relay-card relay-normal relay-extra" data-relay="6" id="relayCard6" style="display:none;">
         <div class="relay-title">%RELAYNAMES6%</div>
-        <div class="relay-status" id="relay-Status6"></div>
+        <div class="relay-status" id="relay-Status6" data-relay-status="6"></div>
         <div class="spacer"></div>
         <button class="primary" data-i18n="status.toggleRelay" onclick="toggleRelay(6)">Toggle</button>
       </div>
@@ -193,25 +193,25 @@ const char* htmlPage = R"rawliteral(
       <div class="tile">
         <h2 data-i18n="status.irrigation">Irrigation</h2>
          <div class="relay-row" id="relayRow">
+          <div class="relay-card irrigation" data-relay="4" id="irrigationRelay4">
+            <div class="relay-title" data-i18n="status.irrigationRelay4">Pumpe 1 Relay 4</div>
+            <div class="relay-status" id="pump-Status4" data-relay-status="4"></div>
+            <div class="spacer"></div>
+            <button type="button" class="primary" data-i18n="status.togglePump10s" onclick="triggerPump10s(4)">Toggle</button>
+          </div>
+
+          <div class="relay-card irrigation" data-relay="5" id="irrigationRelay5">
+            <div class="relay-title" data-i18n="status.irrigationRelay5">Pumpe 2 Relay 5</div>
+            <div class="relay-status" id="pump-Status5" data-relay-status="5"></div>
+            <div class="spacer"></div>
+            <button type="button" class="primary" data-i18n="status.togglePump10s" onclick="triggerPump10s(5)">Toggle</button>
+          </div>
+
           <div class="relay-card irrigation" data-relay="6" id="irrigationRelay6">
-            <div class="relay-title" data-i18n="status.irrigationRelay6">Pumpe 1 Relay 6</div>
-            <div class="relay-status" id="relay-Status6"></div>
+            <div class="relay-title" data-i18n="status.irrigationRelay6">Pumpe 3 Relay 6</div>
+            <div class="relay-status" id="pump-Status6" data-relay-status="6"></div>
             <div class="spacer"></div>
             <button type="button" class="primary" data-i18n="status.togglePump10s" onclick="triggerPump10s(6)">Toggle</button>
-          </div>
-
-          <div class="relay-card irrigation" data-relay="7" id="irrigationRelay7">
-            <div class="relay-title" data-i18n="status.irrigationRelay7">Pumpe 2 Relay 7</div>
-            <div class="relay-status" id="relay-Status7"></div>
-            <div class="spacer"></div>
-            <button type="button" class="primary" data-i18n="status.togglePump10s" onclick="triggerPump10s(7)">Toggle</button>
-          </div>
-
-          <div class="relay-card irrigation" data-relay="8" id="irrigationRelay8">
-            <div class="relay-title" data-i18n="status.irrigationRelay8">Pumpe 3 Relay 8</div>
-            <div class="relay-status" id="relay-Status8"></div>
-            <div class="spacer"></div>
-            <button type="button" class="primary" data-i18n="status.togglePump10s" onclick="triggerPump10s(8)">Toggle</button>
           </div>
 
           <!-- watering section -->
@@ -562,7 +562,6 @@ const char* htmlPage = R"rawliteral(
             <option value="1" %HEATRELAY1_SEL%>%RELAYNAMES1%</option>
             <option value="2" %HEATRELAY2_SEL%>%RELAYNAMES2%</option>
             <option value="3" %HEATRELAY3_SEL%>%RELAYNAMES3%</option>
-            <option value="4" %HEATRELAY4_SEL%>%RELAYNAMES4%</option>
           </select>
         </div>
 
@@ -576,7 +575,7 @@ const char* htmlPage = R"rawliteral(
           <div class="relay-sched-list">
 
             <!-- ESP Relay 1 -->
-            <div class="relay-sched-row">
+            <div class="relay-sched-row" id="espRelay1Row">
               <div class="relay-sched-name">
                 <div class="relay-sched-name-label" data-i18n="runsettings.espSchedRelay1">Relay</div>
                 <div class="relay-sched-name-value">%RELAYNAMES1%</div>
@@ -608,7 +607,7 @@ const char* htmlPage = R"rawliteral(
             </div>
 
             <!-- ESP Relay 2 -->
-            <div class="relay-sched-row">
+            <div class="relay-sched-row" id="espRelay2Row">
               <div class="relay-sched-name">
                 <div class="relay-sched-name-label" data-i18n="runsettings.espSchedRelay2">Relay</div>
                 <div class="relay-sched-name-value">%RELAYNAMES2%</div>
@@ -640,7 +639,7 @@ const char* htmlPage = R"rawliteral(
             </div>
 
             <!-- ESP Relay 3 -->
-            <div class="relay-sched-row">
+            <div class="relay-sched-row" id="espRelay3Row">
               <div class="relay-sched-name">
                 <div class="relay-sched-name-label" data-i18n="runsettings.espSchedRelay3">Relay</div>
                 <div class="relay-sched-name-value">%RELAYNAMES3%</div>
@@ -672,7 +671,7 @@ const char* htmlPage = R"rawliteral(
             </div>
 
             <!-- ESP Relay 4 -->
-            <div class="relay-sched-row">
+            <div class="relay-sched-row" id="espRelay4Row" style="display:none;">
               <div class="relay-sched-name">
                 <div class="relay-sched-name-label" data-i18n="runsettings.espSchedRelay4">Relay</div>
                 <div class="relay-sched-name-value">%RELAYNAMES4%</div>

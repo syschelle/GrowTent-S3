@@ -62,9 +62,9 @@ const char jsContent[] PROGMEM = R"rawliteral(
   "status.last": { de: "akt. ", en: "current " },
 
   "status.irrigation": { de: "Bewässerung", en: "Irrigation" },
-  "status.irrigationRelay6": { de: "Pumpe1 (Relay6)", en: "Pump1 (Relay6)" },
-  "status.irrigationRelay7": { de: "Pumpe2 (Relay7)", en: "Pump2 (Relay7)" },
-  "status.irrigationRelay8": { de: "Pumpe3 (Relay8)", en: "Pump3 (Relay8)" },
+  "status.irrigationRelay4": { de: "Pumpe 1 (Relay 4)", en: "Pump 1 (Relay 4)" },
+  "status.irrigationRelay5": { de: "Pumpe 2 (Relay 5)", en: "Pump 2 (Relay 5)" },
+  "status.irrigationRelay6": { de: "Pumpe 3 (Relay 6)", en: "Pump 3 (Relay 6)" },
 
   "status.lastWaterTemperature": {
     de: "akt. Wassertemperatur",
@@ -428,26 +428,39 @@ window._setSensorPollInterval = function(ms){
   }
 };
 
-// function to show/hide relay controls based on detected relay count (4, 6 or 8)
+// function to show/hide relay controls based on detected relay count (4 or 6)
 function applyRelayVisibility(relayCount) {
-  const count = (relayCount === 8 || relayCount === 6) ? relayCount : 4;
+  const count = (relayCount === 6) ? 6 : 4;
+  const pumpMode = (count === 6);
 
-  // Show irrigation section only for 8-relay board
+  // S3 6CH layout:
+  // Relay 1..3 = generic control relays
+  // Relay 4..6 = watering pumps
   const irr = document.getElementById('irrigationSection');
-  if (irr) irr.style.display = (count === 8) ? '' : 'none';
+  if (irr) irr.style.display = pumpMode ? '' : 'none';
 
-  // Status cards 1..8 (if present)
+  // Generic relay control cards
+  const normalRelayLimit = pumpMode ? 3 : count;
   for (let i = 1; i <= 8; i++) {
-    const card = document.querySelector(`.relay-card[data-relay="${i}"]`);
-    if (card) card.style.display = (i <= count) ? '' : 'none';
+    document.querySelectorAll(`.relay-normal[data-relay="${i}"]`).forEach(card => {
+      card.style.display = (i <= normalRelayLimit) ? '' : 'none';
+    });
   }
 
-  // Scheduling rows 1..8 (if present)
+  // Pump cards
+  for (let i = 1; i <= 8; i++) {
+    document.querySelectorAll(`.irrigation[data-relay="${i}"]`).forEach(card => {
+      card.style.display = (pumpMode && i >= 4 && i <= 6) ? '' : 'none';
+    });
+  }
+
+  // Scheduling rows: in S3 6CH mode only relays 1..3 are schedulable.
+  const schedRelayLimit = pumpMode ? 3 : count;
   for (let i = 1; i <= 8; i++) {
     const row = document.getElementById(`espRelay${i}Row`);
-    if (row) row.style.display = (i <= count) ? '' : 'none';
+    if (row) row.style.display = (i <= schedRelayLimit) ? '' : 'none';
   }
-  
+
   const show5 = (count >= 5);
   const settingsRelay5 = document.getElementById('settingsRelay5Row');
   if (settingsRelay5) settingsRelay5.style.display = show5 ? '' : 'none';
@@ -455,7 +468,7 @@ function applyRelayVisibility(relayCount) {
   if (settingsRelay6) settingsRelay6.style.display = (count >= 6) ? '' : 'none';
 
   const irrSettings = document.getElementById('irrigationSettingsSection');
-  if (irrSettings) irrSettings.style.display = (count === 8) ? '' : 'none';
+  if (irrSettings) irrSettings.style.display = pumpMode ? '' : 'none';
 }
 
 function updateHeatingSourceUi() {
@@ -474,31 +487,33 @@ function updateHeatingSourceUi() {
 
 // activate correct relay controls on page load
 window.updateRelayButtons = function () {
-    // cache relay elements for max 8
+    // cache relay status elements for max 8; multiple cards may show the same relay
     if (!window._relayEls || window._relayEls.length !== 8) {
         window._relayEls = Array.from({ length: 8 }, (_, i) =>
-            document.getElementById(`relay-Status${i + 1}`)
+            Array.from(document.querySelectorAll(`[data-relay-status="${i + 1}"]`))
         );
     }
 
     // only apply state to active relays
     for (let i = 0; i < RELAY_COUNT; i++) {
-        const btn = window._relayEls[i];
-        if (!btn) continue;
+        const els = window._relayEls[i] || [];
+        if (!els.length) continue;
 
-        if (relayStates[i]) {
-            btn.classList.add('on');
-            btn.classList.remove('off');
-        } else {
-            btn.classList.add('off');
-            btn.classList.remove('on');
-        }
+        els.forEach(btn => {
+            if (relayStates[i]) {
+                btn.classList.add('on');
+                btn.classList.remove('off');
+            } else {
+                btn.classList.add('off');
+                btn.classList.remove('on');
+            }
+        });
     }
 };
 
 // toggle relay state on button click, then update buttons based on response
 window.toggleRelay = function (nr) {
-    // guard for 4/8 mode
+    // guard for 4/6 mode
     if (nr < 1 || nr > RELAY_COUNT) return;
 
     const idx = nr - 1;
@@ -2054,7 +2069,8 @@ window.saveRunsettingsAll = async function () {
       const relayCountEl = document.getElementById("webRelayCount");
       const relayCount = parseInt(relayCountEl?.value || "6", 10);
       if (Number.isFinite(relayCount)) {
-        maxRelay = Math.max(4, Math.min(5, relayCount));
+        // In S3 6CH mode, relays 4..6 are reserved for pumps.
+        maxRelay = (relayCount >= 6) ? 3 : Math.max(4, Math.min(5, relayCount));
       }
     } catch (e) {}
 

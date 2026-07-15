@@ -28,7 +28,17 @@
 #define MAX_RELAYS 8
 #define NUM_RELAYS MAX_RELAYS // keep compatibility in existing code
 
-extern int activeRelayCount; // runtime: 4 or 8
+// ESP32-S3 Relay 6CH layout:
+// relays 1..3 are general-purpose control relays,
+// relays 4..6 are reserved for the three watering pumps.
+#define CONTROL_RELAY_LAST 3
+#define PUMP_RELAY_FIRST 4
+#define PUMP_RELAY_LAST 6
+#define PUMP_RELAY_FIRST_IDX (PUMP_RELAY_FIRST - 1)
+#define PUMP_RELAY_LAST_IDX (PUMP_RELAY_LAST - 1)
+#define PUMP_RELAY_COUNT (PUMP_RELAY_LAST - PUMP_RELAY_FIRST + 1)
+
+extern int activeRelayCount; // runtime: 4 or 6 on the S3 repo
 extern const char* KEY_RELAY_COUNT;
 extern SemaphoreHandle_t relayMutex;
 
@@ -171,7 +181,7 @@ struct Settings {
   UIGroup ui;
   NotifyGroup notify;
 
-  // Pump labels for relay 6..8
+  // Pump labels for relay 4..6
   String pump1 = "Pump 1";
   String pump2 = "Pump 2";
   String pump3 = "Pump 3";

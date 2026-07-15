@@ -36,8 +36,8 @@ void taskWatering(void *parameter) {
       continue;
     }
 
-    if (activeRelayCount < 8) {
-      logPrint("[IRRIGATION] Aborted: irrigation requires 8 relays.");
+    if (activeRelayCount < PUMP_RELAY_LAST) {
+      logPrint("[IRRIGATION] Aborted: irrigation requires relays 4..6.");
       irrigation.irrigationRuns = 0;
       irrigation.wTimeLeft = "00:00";
       vTaskDelay(pdMS_TO_TICKS(1000));
@@ -46,7 +46,7 @@ void taskWatering(void *parameter) {
 
     irrigation.wTimeLeft = calculateEndtimeWatering();
 
-    const int pumpRelays[] = {5, 6, 7};
+    const int pumpRelays[] = {PUMP_RELAY_FIRST_IDX, PUMP_RELAY_FIRST_IDX + 1, PUMP_RELAY_LAST_IDX};
     const size_t pumpRelayCount = sizeof(pumpRelays) / sizeof(pumpRelays[0]);
 
     for (size_t i = 0; i < pumpRelayCount; i++) {

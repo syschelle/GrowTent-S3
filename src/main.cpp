@@ -998,11 +998,13 @@ void setup() {
   server.on("/relay/3/toggle", HTTP_POST, []() { handleRelayToggleIdx(2); });
   server.on("/relay/4/toggle", HTTP_POST, []() { handleRelayToggleIdx(3); });
   server.on("/relay/5/toggle", HTTP_POST, []() { handleRelayToggleIdx(4); });
+  server.on("/relay/6/toggle", HTTP_POST, []() { handleRelayToggleIdx(5); });
 
-  // pump toggle + auto-off trigger (10s)
+  // pump pulse endpoints (10s)
+  // ESP32-S3 Relay 6CH: pumps use the last three relays, 4..6.
+  server.on("/pump/4/triggerPump10s", HTTP_POST, []() { handlePumpPulseIdx(3, 10000UL); });
+  server.on("/pump/5/triggerPump10s", HTTP_POST, []() { handlePumpPulseIdx(4, 10000UL); });
   server.on("/pump/6/triggerPump10s", HTTP_POST, []() { handlePumpPulseIdx(5, 10000UL); });
-  server.on("/pump/7/triggerPump10s", HTTP_POST, []() { handlePumpPulseIdx(6, 10000UL); });
-  server.on("/pump/8/triggerPump10s", HTTP_POST, []() { handlePumpPulseIdx(7, 10000UL); });
 
   // Shelly toggle endpoints (read current state, invert, set new state, return result). We have separate endpoints per device to simplify frontend logic (no need to send which one in body).
   server.on("/shelly/main/toggle", HTTP_POST, []() {

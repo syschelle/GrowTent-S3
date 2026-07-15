@@ -99,14 +99,14 @@ stability and responsiveness of sensor readings.
 
 ### ESP32-S3 Relay 6CH pin mapping
 
-| Relay | Board channel | GPIO |
-|---:|---|---:|
-| 1 | CH1 | GPIO1 |
-| 2 | CH2 | GPIO2 |
-| 3 | CH3 | GPIO41 |
-| 4 | CH4 | GPIO42 |
-| 5 | CH5 | GPIO45 |
-| 6 | CH6 | GPIO46 |
+| Relay | Board channel | GPIO | Firmware role |
+|---:|---|---:|---|
+| 1 | CH1 | GPIO1 | General relay |
+| 2 | CH2 | GPIO2 | General relay |
+| 3 | CH3 | GPIO41 | General relay |
+| 4 | CH4 | GPIO42 | Pump 1 |
+| 5 | CH5 | GPIO45 | Pump 2 |
+| 6 | CH6 | GPIO46 | Pump 3 |
 
 Disabled / not connected in this firmware build:
 
@@ -326,8 +326,10 @@ Do **not** point an ESP32-S3 device to the classic ESP32 `GrowTent` release chan
 
 ### Control
 
-- `POST /relay/{1..6}/toggle`
-- `POST /pump/6/triggerPump10s`
+- `POST /relay/{1..3}/toggle`  
+  Generic relay toggle endpoints. In 6CH mode, relays 4..6 are reserved for pumps.
+- `POST /pump/{4..6}/triggerPump10s`  
+  Pump pulse endpoints for Pump 1..3.
 - `POST /startWatering`
 - `POST /pingTank`
 
@@ -398,7 +400,7 @@ Create a release by pushing a version tag:
 
 ```bash
 git add -A
-git commit -m "Initial ESP32-S3 Relay 6CH firmware"
+git commit -m "Initial ESP32-S3 Relay 6CH firmware with pumps 4-6"
 git push origin main
 git tag v0.1.0
 git push origin v0.1.0

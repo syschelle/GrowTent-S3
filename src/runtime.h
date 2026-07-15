@@ -271,12 +271,12 @@ void readPreferences() {
 #endif
 
   // relays
-  settings.relay.name[0] = preferences.getString(KEY_RELAY_1, "relay 1");
-  settings.relay.name[1] = preferences.getString(KEY_RELAY_2, "relay 2");
-  settings.relay.name[2] = preferences.getString(KEY_RELAY_3, "relay 3");
-  settings.relay.name[3] = preferences.getString(KEY_RELAY_4, "relay 4");
-  if (activeRelayCount >= 5) settings.relay.name[4] = preferences.getString(KEY_RELAY_5, "relay 5");
-  if (activeRelayCount >= 6) settings.relay.name[5] = preferences.getString(KEY_RELAY_6, "relay 6");
+  settings.relay.name[0] = preferences.getString(KEY_RELAY_1, "Relay 1");
+  settings.relay.name[1] = preferences.getString(KEY_RELAY_2, "Relay 2");
+  settings.relay.name[2] = preferences.getString(KEY_RELAY_3, "Relay 3");
+  settings.relay.name[3] = preferences.getString(KEY_RELAY_4, (activeRelayCount >= 6) ? "Pumpe 1" : "Relay 4");
+  if (activeRelayCount >= 5) settings.relay.name[4] = preferences.getString(KEY_RELAY_5, "Pumpe 2");
+  if (activeRelayCount >= 6) settings.relay.name[5] = preferences.getString(KEY_RELAY_6, "Pumpe 3");
   if (activeRelayCount >= 7) settings.relay.name[6] = preferences.getString(KEY_RELAY_7, "relay 7");
   if (activeRelayCount >= 8) settings.relay.name[7] = preferences.getString(KEY_RELAY_8, "relay 8");
 
@@ -303,6 +303,9 @@ void readPreferences() {
   if (settings.heating.sourceType < 0 || settings.heating.sourceType > 2) {
     settings.heating.sourceType = 0;
   }
+  if (settings.heating.Relay < 0 || settings.heating.Relay > CONTROL_RELAY_LAST) {
+    settings.heating.Relay = 0;
+  }
   if (settings.heating.sourceType != 1) {
     settings.heating.Relay = 0;
   }
@@ -311,8 +314,9 @@ void readPreferences() {
   settings.grow.lightDayHours = lightDayHours;
 
   // relay schedules
-  // Load relay schedules into settings.relay.schedule[0..3]
-  for (int i = 0; i < activeRelayCount; i++) {
+  // In S3 6CH mode, relays 4..6 are reserved for pumps and not scheduled here.
+  const int scheduleLoadCount = (activeRelayCount >= 6) ? CONTROL_RELAY_LAST : activeRelayCount;
+  for (int i = 0; i < scheduleLoadCount; i++) {
     int relay = i + 1;
 
     String keyEn = "relay_enable_" + String(relay);
