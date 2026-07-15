@@ -1,0 +1,59 @@
+name: Build and Release ESP32-S3 Firmware
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Generate firmware version header
+        run: |
+          printf '#pragma once\n#define FW_VERSION "%s"\n' "${GITHUB_REF_NAME}" > src/build_version.h
+          cat src/build_version.h
+
+      - name: Build firmware
+        run: pio run -e esp32-s3-relay-6ch
+
+      - name: Verify firmware file
+        run: |
+          ls -lh .pio/build/esp32-s3-relay-6ch/
+          test -f .pio/build/esp32-s3-relay-6ch/firmware.bin
+
+      - name: Prepare release file
+        run: |
+          cp .pio/build/esp32-s3-relay-6ch/firmware.bin firmware.bin
+
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG exists, replacing firmware.bin"
+            gh release upload "$TAG" firmware.bin --clobber
+          else
+            echo "Creating release $TAG"
+            gh release create "$TAG" firmware.bin \
+              --title "$TAG" \
+              --notes "ESP32-S3 Relay 6CH firmware $TAG" \
+              --verify-tag
+          fi
