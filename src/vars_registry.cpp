@@ -236,7 +236,7 @@ static String g_sh_pass() { return jMasked(); }
 
 static String g_heating_relay() { return jInt(settings.heating.Relay); }
 
-// Active relay count (4 or 8 depending on config)
+// Active relay count (4 or 6 depending on config)
 static String g_active_relay_count() { return jInt(activeRelayCount); }
 
 // Relay getters (state + name)
@@ -252,14 +252,9 @@ RELAY_GETTERS(1)
 RELAY_GETTERS(2)
 RELAY_GETTERS(3)
 RELAY_GETTERS(4)
+RELAY_GETTERS(5)
 
-// For relays 5-7 we only have state + name, no schedule (yet)
-static String g_relay_state_5() { return jBool(relayStates[5]); }
-static String g_relay_name_5() { return jStr(settings.relay.name[5]); }
-static String g_relay_schen_5() { return jBool(false); }
-static String g_relay_schst_5() { return String("null"); }
-static String g_relay_schen_5_end() { return String("null"); }
-
+// Relays 7-8 are disabled on the S3 6CH board.
 static String g_relay_state_6() { return jBool(relayStates[6]); }
 static String g_relay_name_6() { return jStr(settings.pump2); }
 static String g_relay_schen_6() { return jBool(false); }
@@ -430,6 +425,9 @@ const VarItem VARS[] = {
 
   {"relays[5].name", g_relay_name_5, false, "relays"},
   {"relays[5].state", g_relay_state_5, false, "relays"},
+  {"relays[5].schedule.enabled", g_relay_schen_5, false, "relays"},
+  {"relays[5].schedule.start", g_relay_schst_5, false, "relays"},
+  {"relays[5].schedule.end", g_relay_schen_5_end, false, "relays"},
 
   {"relays[6].name", g_relay_name_6, false, "relays"},
   {"relays[6].state", g_relay_state_6, false, "relays"},

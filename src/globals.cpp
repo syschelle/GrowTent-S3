@@ -55,6 +55,8 @@ const char* KEY_RELAY_START_4 = "relay_start_4";
 const char* KEY_RELAY_END_4   = "relay_end_4";
 const char* KEY_RELAY_START_5 = "relay_start_5";
 const char* KEY_RELAY_END_5   = "relay_end_5";
+const char* KEY_RELAY_START_6 = "relay_start_6";
+const char* KEY_RELAY_END_6   = "relay_end_6";
 
 // Shelly device keys
 const char* KEY_SHELLYMAINIP = "shMainIP";
@@ -141,7 +143,7 @@ bool espMode = false;
 bool relaySchedulesEnabled[NUM_RELAYS] = {false};
 int  relaySchedulesStart[NUM_RELAYS] = {0};
 int  relaySchedulesEnd[NUM_RELAYS] = {0};
-String relayNames[NUM_RELAYS] = {"Relay 1","Relay 2","Relay 3","Pumpe 1","Pumpe 2","Pumpe 3","relay 7","relay 8"};
+String relayNames[NUM_RELAYS] = {"Pumpe 1","Pumpe 2","Pumpe 3","Relay 4","Relay 5","Relay 6","relay 7","relay 8"};
 
 // Irrigation
 Irrigation irrigation;

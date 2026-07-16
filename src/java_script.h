@@ -62,9 +62,9 @@ const char jsContent[] PROGMEM = R"rawliteral(
   "status.last": { de: "akt. ", en: "current " },
 
   "status.irrigation": { de: "Bewässerung", en: "Irrigation" },
-  "status.irrigationRelay4": { de: "Pumpe 1 (Relay 4)", en: "Pump 1 (Relay 4)" },
-  "status.irrigationRelay5": { de: "Pumpe 2 (Relay 5)", en: "Pump 2 (Relay 5)" },
-  "status.irrigationRelay6": { de: "Pumpe 3 (Relay 6)", en: "Pump 3 (Relay 6)" },
+  "status.irrigationRelay1": { de: "Pumpe 1 (Relay 1)", en: "Pump 1 (Relay 1)" },
+  "status.irrigationRelay2": { de: "Pumpe 2 (Relay 2)", en: "Pump 2 (Relay 2)" },
+  "status.irrigationRelay3": { de: "Pumpe 3 (Relay 3)", en: "Pump 3 (Relay 3)" },
 
   "status.lastWaterTemperature": {
     de: "akt. Wassertemperatur",
@@ -164,6 +164,8 @@ const char jsContent[] PROGMEM = R"rawliteral(
   "runsettings.espSchedRelay2": { de: "Relay2", en: "Relay2" },
   "runsettings.espSchedRelay3": { de: "Relay3", en: "Relay3" },
   "runsettings.espSchedRelay4": { de: "Relay4", en: "Relay4" },
+  "runsettings.espSchedRelay5": { de: "Relay5", en: "Relay5" },
+  "runsettings.espSchedRelay6": { de: "Relay6", en: "Relay6" },
   "runsetting.relay.enable": { de: "Aktivieren:", en: "Enable:" },
   "runsetting.relay.start": { de: "Start:", en: "Start:" },
   "runsetting.relay.stop": { de: "Stopp:", en: "Stop:" },
@@ -434,31 +436,37 @@ function applyRelayVisibility(relayCount) {
   const pumpMode = (count === 6);
 
   // S3 6CH layout:
-  // Relay 1..3 = generic control relays
-  // Relay 4..6 = watering pumps
+  // Relay 1..3 = watering pumps
+  // Relay 4..6 = generic control relays
   const irr = document.getElementById('irrigationSection');
   if (irr) irr.style.display = pumpMode ? '' : 'none';
 
   // Generic relay control cards
-  const normalRelayLimit = pumpMode ? 3 : count;
   for (let i = 1; i <= 8; i++) {
+    const showControl = pumpMode
+      ? (i >= 4 && i <= 6)
+      : (i <= count);
+
     document.querySelectorAll(`.relay-normal[data-relay="${i}"]`).forEach(card => {
-      card.style.display = (i <= normalRelayLimit) ? '' : 'none';
+      card.style.display = showControl ? '' : 'none';
     });
   }
 
   // Pump cards
   for (let i = 1; i <= 8; i++) {
     document.querySelectorAll(`.irrigation[data-relay="${i}"]`).forEach(card => {
-      card.style.display = (pumpMode && i >= 4 && i <= 6) ? '' : 'none';
+      card.style.display = (pumpMode && i >= 1 && i <= 3) ? '' : 'none';
     });
   }
 
-  // Scheduling rows: in S3 6CH mode only relays 1..3 are schedulable.
-  const schedRelayLimit = pumpMode ? 3 : count;
+  // Scheduling rows: in S3 6CH mode only relays 4..6 are schedulable.
   for (let i = 1; i <= 8; i++) {
+    const showSchedule = pumpMode
+      ? (i >= 4 && i <= 6)
+      : (i <= count);
+
     const row = document.getElementById(`espRelay${i}Row`);
-    if (row) row.style.display = (i <= schedRelayLimit) ? '' : 'none';
+    if (row) row.style.display = showSchedule ? '' : 'none';
   }
 
   const show5 = (count >= 5);
@@ -2064,18 +2072,20 @@ window.saveRunsettingsAll = async function () {
       return !!el?.checked;
     };
 
-    let maxRelay = 4;
+    let firstRelay = 1;
+    let lastRelay = 4;
     try {
       const relayCountEl = document.getElementById("webRelayCount");
       const relayCount = parseInt(relayCountEl?.value || "6", 10);
-      if (Number.isFinite(relayCount)) {
-        // In S3 6CH mode, relays 4..6 are reserved for pumps.
-        maxRelay = (relayCount >= 6) ? 3 : Math.max(4, Math.min(5, relayCount));
+      if (Number.isFinite(relayCount) && relayCount >= 6) {
+        // In S3 6CH mode, relays 1..3 are pumps and relays 4..6 are scheduled.
+        firstRelay = 4;
+        lastRelay = 6;
       }
     } catch (e) {}
 
     const relays = [];
-    for (let relay = 1; relay <= maxRelay; relay++) {
+    for (let relay = firstRelay; relay <= lastRelay; relay++) {
       const onMinRaw = parseInt(document.getElementById(`espRelay${relay}OnMin`)?.value || "0", 10);
       const offMinRaw = parseInt(document.getElementById(`espRelay${relay}OffMin`)?.value || "0", 10);
 

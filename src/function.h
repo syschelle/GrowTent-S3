@@ -545,7 +545,15 @@ void handleSaveRunsettings() {
   preferences.putInt(KEY_HEATING_SOURCE, settings.heating.sourceType);
 
   saveIntJson("webHeatingRelay",       KEY_HEATING_RELAY, settings.heating.Relay,       "Heating Relay");
-  settings.heating.Relay = clampIntLocal(settings.heating.Relay, 0, CONTROL_RELAY_LAST);
+  if (
+    settings.heating.Relay != 0 &&
+    (
+      settings.heating.Relay < CONTROL_RELAY_FIRST ||
+      settings.heating.Relay > CONTROL_RELAY_LAST
+    )
+  ) {
+    settings.heating.Relay = 0;
+  }
 
   if (settings.heating.sourceType != 1) {
     settings.heating.Relay = 0;
@@ -554,15 +562,21 @@ void handleSaveRunsettings() {
   heatingRelay = settings.heating.Relay;
 
   // -----------------------------
-  // store relay scheduling settings. In S3 6CH mode, relays 4..6 are reserved for pumps.
+  // Store relay scheduling settings.
+  // In S3 6CH mode, relays 1..3 are pumps and relays 4..6 are schedulable.
   // -----------------------------
   JsonArray arr = doc["relays"].as<JsonArray>();
   if (!arr.isNull()) {
-    const int maxScheduledRelay = (activeRelayCount >= 6) ? CONTROL_RELAY_LAST : ((activeRelayCount < 5) ? activeRelayCount : 5);
+    const bool s3SixRelayMode = activeRelayCount >= CONTROL_RELAY_LAST;
 
     for (JsonObject r : arr) {
       int relay = r["relay"] | 0;
-      if (relay < 1 || relay > maxScheduledRelay) continue;
+
+      if (s3SixRelayMode) {
+        if (relay < CONTROL_RELAY_FIRST || relay > CONTROL_RELAY_LAST) continue;
+      } else {
+        if (relay < 1 || relay > activeRelayCount) continue;
+      }
 
       int idx = relay - 1;
 
@@ -584,14 +598,16 @@ void handleSaveRunsettings() {
         (relay == 2) ? KEY_RELAY_START_2 :
         (relay == 3) ? KEY_RELAY_START_3 :
         (relay == 4) ? KEY_RELAY_START_4 :
-                       KEY_RELAY_START_5;
+        (relay == 5) ? KEY_RELAY_START_5 :
+                       KEY_RELAY_START_6;
 
       const char* kOff =
         (relay == 1) ? KEY_RELAY_END_1 :
         (relay == 2) ? KEY_RELAY_END_2 :
         (relay == 3) ? KEY_RELAY_END_3 :
         (relay == 4) ? KEY_RELAY_END_4 :
-                       KEY_RELAY_END_5;
+        (relay == 5) ? KEY_RELAY_END_5 :
+                       KEY_RELAY_END_6;
 
       preferences.putBool(keyEn.c_str(), enabled);
       preferences.putBool(keyILO.c_str(), ifLightOff);
@@ -1396,10 +1412,14 @@ void handleRelayToggleIdx(int idx) {
     return;
   }
 
-  // On the ESP32-S3 6CH build, relays 4..6 are reserved for pumps.
+  // On the ESP32-S3 6CH build, relays 1..3 are reserved for pumps.
   // They must be controlled through the pump pulse endpoints so a pump cannot
   // accidentally remain ON through the generic relay toggle API.
-  if (activeRelayCount >= 6 && idx >= CONTROL_RELAY_LAST) {
+  if (
+    activeRelayCount >= CONTROL_RELAY_LAST &&
+    idx >= PUMP_RELAY_FIRST_IDX &&
+    idx <= PUMP_RELAY_LAST_IDX
+  ) {
     server.send(400, "application/json", "{\"ok\":false,\"err\":\"reserved_for_pump\"}");
     return;
   }
@@ -2691,10 +2711,13 @@ static void applyRelaySchedules() {
   const bool lightStatusValid = shelly.light.values.ok;
   const bool lightIsOn = lightStatusValid ? shelly.light.values.isOn : false;
 
-  // On the S3 6CH board, relays 4..6 are reserved for pumps.
-  const int scheduledRelayCount = (activeRelayCount >= 6) ? CONTROL_RELAY_LAST : ((activeRelayCount < 5) ? activeRelayCount : 5);
+  // On the S3 6CH board, relays 1..3 are pumps and relays 4..6 are scheduled.
+  const bool s3SixRelayMode = activeRelayCount >= CONTROL_RELAY_LAST;
+  const int firstScheduledRelay = s3SixRelayMode ? CONTROL_RELAY_FIRST : 1;
+  const int lastScheduledRelay  = s3SixRelayMode ? CONTROL_RELAY_LAST : activeRelayCount;
 
-  for (int i = 0; i < scheduledRelayCount; i++) {
+  for (int relayNo = firstScheduledRelay; relayNo <= lastScheduledRelay; relayNo++) {
+    const int i = relayNo - 1;
     const RelaySchedule& sc = settings.relay.schedule[i];
 
     // Skip relay if scheduling is disabled
@@ -2867,7 +2890,17 @@ static void controlHumidifierByVPD() {
 
 // Handles a pump pulse request for a specific relay index (0-based).
 void handlePumpPulseIdx(int idx, uint32_t ms = 10000UL) {
-    // ESP32-S3 Relay 6CH: pumps are the last three relays: 4..6 (index 3..5)
+    // Irrigation is enabled only in the ESP32-S3 6CH layout.
+    if (activeRelayCount < CONTROL_RELAY_LAST) {
+        server.send(
+            400,
+            "application/json",
+            "{\"ok\":false,\"err\":\"irrigation_unavailable\"}"
+        );
+        return;
+    }
+
+    // ESP32-S3 Relay 6CH: pumps are relays 1..3 (index 0..2)
     if (idx < PUMP_RELAY_FIRST_IDX || idx > PUMP_RELAY_LAST_IDX) {
         server.send(
             400,

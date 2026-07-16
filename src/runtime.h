@@ -167,10 +167,14 @@ void handleRoot() {
     html.replace("%ESPRELAY4_OFFMIN%", String(settings.relay.schedule[3].offMin));
     html.replace("%RELAYNAMES5%", String(settings.relay.name[4]));
     html.replace("%RELAYNAMES6%", String(settings.relay.name[5]));
-    html.replace("%ESPRELAY5_ENABLED_CHECKED%", settings.relay.schedule[4]. enabled ? "checked" : "");
+    html.replace("%ESPRELAY5_ENABLED_CHECKED%", settings.relay.schedule[4].enabled ? "checked" : "");
     html.replace("%ESPRELAY5_IFLIGHTOFF_CHECKED%", settings.relay.schedule[4].ifLightOff ? "checked" : "");
     html.replace("%ESPRELAY5_ONMIN%", String(settings.relay.schedule[4].onMin));
     html.replace("%ESPRELAY5_OFFMIN%", String(settings.relay.schedule[4].offMin));
+    html.replace("%ESPRELAY6_ENABLED_CHECKED%", settings.relay.schedule[5].enabled ? "checked" : "");
+    html.replace("%ESPRELAY6_IFLIGHTOFF_CHECKED%", settings.relay.schedule[5].ifLightOff ? "checked" : "");
+    html.replace("%ESPRELAY6_ONMIN%", String(settings.relay.schedule[5].onMin));
+    html.replace("%ESPRELAY6_OFFMIN%", String(settings.relay.schedule[5].offMin));
 
     html.replace("%HEATSRC0_SEL%", settings.heating.sourceType == 0 ? "selected" : "");
     html.replace("%HEATSRC1_SEL%", settings.heating.sourceType == 1 ? "selected" : "");
@@ -188,10 +192,9 @@ void handleRoot() {
 
     html.replace("%TARGETVPD%", String(settings.grow.targetVPD, 1));
 
-    html.replace("%HEATRELAY1_SEL%", settings.heating.Relay == 1 ? "selected" : "");
-    html.replace("%HEATRELAY2_SEL%", settings.heating.Relay == 2 ? "selected" : "");
-    html.replace("%HEATRELAY3_SEL%", settings.heating.Relay == 3 ? "selected" : "");
     html.replace("%HEATRELAY4_SEL%", settings.heating.Relay == 4 ? "selected" : "");
+    html.replace("%HEATRELAY5_SEL%", settings.heating.Relay == 5 ? "selected" : "");
+    html.replace("%HEATRELAY6_SEL%", settings.heating.Relay == 6 ? "selected" : "");
 
     html.replace("%SHELLYMAINIP%", settings.shelly.main.ip);
     html.replace("%SHMAINSWKIND1%", settings.shelly.main.gen == 1 ? "selected" : "");
@@ -271,12 +274,12 @@ void readPreferences() {
 #endif
 
   // relays
-  settings.relay.name[0] = preferences.getString(KEY_RELAY_1, "Relay 1");
-  settings.relay.name[1] = preferences.getString(KEY_RELAY_2, "Relay 2");
-  settings.relay.name[2] = preferences.getString(KEY_RELAY_3, "Relay 3");
-  settings.relay.name[3] = preferences.getString(KEY_RELAY_4, (activeRelayCount >= 6) ? "Pumpe 1" : "Relay 4");
-  if (activeRelayCount >= 5) settings.relay.name[4] = preferences.getString(KEY_RELAY_5, "Pumpe 2");
-  if (activeRelayCount >= 6) settings.relay.name[5] = preferences.getString(KEY_RELAY_6, "Pumpe 3");
+  settings.relay.name[0] = preferences.getString(KEY_RELAY_1, (activeRelayCount >= 6) ? "Pumpe 1" : "Relay 1");
+  settings.relay.name[1] = preferences.getString(KEY_RELAY_2, (activeRelayCount >= 6) ? "Pumpe 2" : "Relay 2");
+  settings.relay.name[2] = preferences.getString(KEY_RELAY_3, (activeRelayCount >= 6) ? "Pumpe 3" : "Relay 3");
+  settings.relay.name[3] = preferences.getString(KEY_RELAY_4, "Relay 4");
+  if (activeRelayCount >= 5) settings.relay.name[4] = preferences.getString(KEY_RELAY_5, "Relay 5");
+  if (activeRelayCount >= 6) settings.relay.name[5] = preferences.getString(KEY_RELAY_6, "Relay 6");
   if (activeRelayCount >= 7) settings.relay.name[6] = preferences.getString(KEY_RELAY_7, "relay 7");
   if (activeRelayCount >= 8) settings.relay.name[7] = preferences.getString(KEY_RELAY_8, "relay 8");
 
@@ -303,7 +306,13 @@ void readPreferences() {
   if (settings.heating.sourceType < 0 || settings.heating.sourceType > 2) {
     settings.heating.sourceType = 0;
   }
-  if (settings.heating.Relay < 0 || settings.heating.Relay > CONTROL_RELAY_LAST) {
+  if (
+    settings.heating.Relay != 0 &&
+    (
+      settings.heating.Relay < CONTROL_RELAY_FIRST ||
+      settings.heating.Relay > CONTROL_RELAY_LAST
+    )
+  ) {
     settings.heating.Relay = 0;
   }
   if (settings.heating.sourceType != 1) {
@@ -314,10 +323,13 @@ void readPreferences() {
   settings.grow.lightDayHours = lightDayHours;
 
   // relay schedules
-  // In S3 6CH mode, relays 4..6 are reserved for pumps and not scheduled here.
-  const int scheduleLoadCount = (activeRelayCount >= 6) ? CONTROL_RELAY_LAST : activeRelayCount;
-  for (int i = 0; i < scheduleLoadCount; i++) {
-    int relay = i + 1;
+  // In S3 6CH mode, relays 1..3 are pumps and relays 4..6 are scheduled here.
+  const bool s3SixRelayMode = activeRelayCount >= CONTROL_RELAY_LAST;
+  const int firstScheduleRelay = s3SixRelayMode ? CONTROL_RELAY_FIRST : 1;
+  const int lastScheduleRelay  = s3SixRelayMode ? CONTROL_RELAY_LAST : activeRelayCount;
+
+  for (int relay = firstScheduleRelay; relay <= lastScheduleRelay; relay++) {
+    const int i = relay - 1;
 
     String keyEn = "relay_enable_" + String(relay);
     String keyILO = "ilo_" + String(relay);
@@ -327,14 +339,16 @@ void readPreferences() {
     (relay == 2) ? KEY_RELAY_START_2 :
     (relay == 3) ? KEY_RELAY_START_3 :
     (relay == 4) ? KEY_RELAY_START_4 :
-    KEY_RELAY_START_5;
+    (relay == 5) ? KEY_RELAY_START_5 :
+    KEY_RELAY_START_6;
 
     const char* keyOff =
     (relay == 1) ? KEY_RELAY_END_1 :
     (relay == 2) ? KEY_RELAY_END_2 :
     (relay == 3) ? KEY_RELAY_END_3 :
     (relay == 4) ? KEY_RELAY_END_4 :
-    KEY_RELAY_END_5;
+    (relay == 5) ? KEY_RELAY_END_5 :
+    KEY_RELAY_END_6;
 
     settings.relay.schedule[i].enabled = preferences.getBool(keyEn.c_str(), false);
     settings.relay.schedule[i].ifLightOff = preferences.getBool(keyILO.c_str(), false);
