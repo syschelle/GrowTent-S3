@@ -844,7 +844,7 @@ const char* htmlPage = R"rawliteral(
           <label for="webRelayCount" data-i18n="settings.relayBoard">welches Relay-Board?</label>
           <select name="webRelayCount" id="webRelayCount" class="control-sm shelly-other">
             <option value="4" %RELAYCOUNT4_SEL%>4x</option>
-            <option value="6" %RELAYCOUNT6_SEL%>6x S3</option>
+            <option value="6" %RELAYCOUNT6_SEL%>ESP32-S3-Relay-6Ch</option>
           </select>
         </div>
 

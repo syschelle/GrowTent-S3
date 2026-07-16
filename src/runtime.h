@@ -280,10 +280,30 @@ void readPreferences() {
     relayNames[i] = FIXED_PUMP_RELAY_NAMES[i];
   }
 
-  // General-purpose relay names remain user-configurable.
-  settings.relay.name[3] = preferences.getString(KEY_RELAY_4, "Relay 4");
-  if (activeRelayCount >= 5) settings.relay.name[4] = preferences.getString(KEY_RELAY_5, "Relay 5");
-  if (activeRelayCount >= 6) settings.relay.name[5] = preferences.getString(KEY_RELAY_6, "Relay 6");
+  // General-purpose relay names remain user-configurable. Obsolete pump
+  // defaults from the previous layout are converted to Relay 4..6 in memory.
+  settings.relay.name[3] = normalizeControlRelayName(
+    preferences.getString(KEY_RELAY_4, ""),
+    4
+  );
+  relayNames[3] = settings.relay.name[3];
+
+  if (activeRelayCount >= 5) {
+    settings.relay.name[4] = normalizeControlRelayName(
+      preferences.getString(KEY_RELAY_5, ""),
+      5
+    );
+    relayNames[4] = settings.relay.name[4];
+  }
+
+  if (activeRelayCount >= 6) {
+    settings.relay.name[5] = normalizeControlRelayName(
+      preferences.getString(KEY_RELAY_6, ""),
+      6
+    );
+    relayNames[5] = settings.relay.name[5];
+  }
+
   if (activeRelayCount >= 7) settings.relay.name[6] = preferences.getString(KEY_RELAY_7, "relay 7");
   if (activeRelayCount >= 8) settings.relay.name[7] = preferences.getString(KEY_RELAY_8, "relay 8");
 

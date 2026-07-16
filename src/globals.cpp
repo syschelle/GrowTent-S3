@@ -146,6 +146,37 @@ const char* const FIXED_PUMP_RELAY_NAMES[PUMP_RELAY_COUNT] = {
   "Pump 3"
 };
 
+String defaultControlRelayName(int relayNumber) {
+  return "Relay " + String(relayNumber);
+}
+
+String normalizeControlRelayName(const String& candidate, int relayNumber) {
+  String cleaned = candidate;
+  cleaned.trim();
+
+  // Empty names should always fall back to the visible relay number.
+  if (cleaned.length() == 0) {
+    return defaultControlRelayName(relayNumber);
+  }
+
+  // Relay 4..6 used to be the three pump outputs. Replace only those old
+  // default names; all other user-defined names remain untouched.
+  const int legacyPumpNumber = relayNumber - CONTROL_RELAY_FIRST + 1;
+  String compact = cleaned;
+  compact.toLowerCase();
+  compact.replace(" ", "");
+  compact.replace("-", "");
+  compact.replace("_", "");
+
+  const String oldEnglishName = "pump" + String(legacyPumpNumber);
+  const String oldGermanName = "pumpe" + String(legacyPumpNumber);
+  if (compact == oldEnglishName || compact == oldGermanName) {
+    return defaultControlRelayName(relayNumber);
+  }
+
+  return cleaned;
+}
+
 bool relaySchedulesEnabled[NUM_RELAYS] = {false};
 int  relaySchedulesStart[NUM_RELAYS] = {0};
 int  relaySchedulesEnd[NUM_RELAYS] = {0};

@@ -115,6 +115,7 @@ The fixed S3 role layout is:
 - Pump 3 → Relay 3
 - Pump relay names are fixed in the firmware and cannot be changed in System Settings.
 - General relay control, heating selection and minute scheduling → Relays 4–6
+- Board selector label in System Settings: `ESP32-S3-Relay-6Ch`
 
 Disabled / not connected in this firmware build:
 
@@ -319,7 +320,7 @@ Do **not** point an ESP32-S3 device to the classic ESP32 `GrowTent` release chan
 - WiFi: You can set the device to Station mode or keep it in AP mode for direct connection.
 - NTP and timezone: Set the NTP server and POSIX timezone string via the web UI.
 - Relay behavior: Relays are initialized as outputs and default to OFF at startup.
-- Relay 1–3 are dedicated pump outputs with fixed names. Relay 4–6 names and behavior remain configurable in the UI.
+- Relay 1–3 are dedicated pump outputs with fixed names. Relay 4–6 default to `Relay 4`, `Relay 5` and `Relay 6`, while custom names remain configurable.
 - Shelly devices can be used alongside the onboard relays.
 - LittleFS is not formatted automatically during boot or OTA updates.
 
@@ -408,10 +409,10 @@ Create a release by pushing a version tag:
 
 ```bash
 git add -A
-git commit -m "Use relays 1-3 for pumps and 4-6 for control"
+git commit -m "Update S3 board label and restore relay 4-6 names"
 git push origin main
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.1.3
+git push origin v0.1.3
 ```
 
 GitHub Actions builds the firmware and uploads `firmware.bin` to the release.

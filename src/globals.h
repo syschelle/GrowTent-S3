@@ -45,6 +45,13 @@ extern const char* const FIXED_PUMP_RELAY_NAMES[PUMP_RELAY_COUNT];
 #define CONTROL_RELAY_FIRST_IDX (CONTROL_RELAY_FIRST - 1)
 #define CONTROL_RELAY_LAST_IDX (CONTROL_RELAY_LAST - 1)
 
+// Return a stable default label for a general-purpose relay.
+String defaultControlRelayName(int relayNumber);
+
+// Keep custom names, but replace empty or obsolete pump defaults from the
+// previous relay layout with the correct general-purpose relay label.
+String normalizeControlRelayName(const String& candidate, int relayNumber);
+
 extern int activeRelayCount; // runtime: 4 or 6 on the S3 repo
 extern const char* KEY_RELAY_COUNT;
 extern SemaphoreHandle_t relayMutex;

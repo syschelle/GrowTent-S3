@@ -263,6 +263,28 @@ void savePrefString(
   }
 }
 
+// Save a configurable general-purpose relay name.
+//
+// Empty values and obsolete pump defaults from the former Relay 4..6 pump
+// layout are replaced with the visible default name (Relay 4, Relay 5, Relay 6).
+void saveControlRelayName(
+  const char* argName,
+  const char* prefKey,
+  String& targetVar,
+  int relayNumber
+) {
+  if (!server.hasArg(argName)) return;
+
+  targetVar = normalizeControlRelayName(server.arg(argName), relayNumber);
+  settings.relay.name[relayNumber - 1] = targetVar;
+  preferences.putString(prefKey, targetVar);
+
+  logPrint(
+    "[PREFERENCES SAVE] Relay " + String(relayNumber) +
+    " Name written = " + targetVar
+  );
+}
+
 // Helper function to save an integer preference if the corresponding argument is present
 void savePrefInt(
   const char* argName,
@@ -959,12 +981,12 @@ void handleSaveSettings() {
   }
 
   // Only general-purpose relay names are configurable.
-  savePrefString("webRelayName4", KEY_RELAY_4, relayNames[3], "Relay 4 Name");
+  saveControlRelayName("webRelayName4", KEY_RELAY_4, relayNames[3], 4);
   if (activeRelayCount >= 5) {
-    savePrefString("webRelayName5", KEY_RELAY_5, relayNames[4], "Relay 5 Name");
+    saveControlRelayName("webRelayName5", KEY_RELAY_5, relayNames[4], 5);
   }
   if (activeRelayCount >= 6) {
-    savePrefString("webRelayName6", KEY_RELAY_6, relayNames[5], "Relay 6 Name");
+    saveControlRelayName("webRelayName6", KEY_RELAY_6, relayNames[5], 6);
   }
 
   preferences.end(); // always close Preferences handle
