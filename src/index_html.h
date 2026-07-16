@@ -924,20 +924,9 @@ const char* htmlPage = R"rawliteral(
         </div>
 
         <h2 data-i18n="settings.relaySettings">Relais Einstellungen</h2>
-        <div class="form-group">
-          <label for="webRelay1" data-i18n="settings.relay1">Relay 1:</label>
-          <input name="webRelayName1" id="webRelayName1" type="text" data-i18n="settings.relay1.ph" data-i18n-attr="placeholder" style="width: 120px;" maxlength="15" value="%RELAYNAMES1%">
-        </div>
-
-        <div class="form-group">
-          <label for="webRelay2" data-i18n="settings.relay2">Relay 2:</label>
-          <input name="webRelayName2" id="webRelayName2" type="text" data-i18n="settings.relay2.ph" data-i18n-attr="placeholder" style="width: 120px;" maxlength="15" value="%RELAYNAMES2%">
-        </div>
-
-        <div class="form-group">
-          <label for="webRelay3" data-i18n="settings.relay3">Relay 3:</label>
-          <input name="webRelayName3" id="webRelayName3" type="text" data-i18n="settings.relay3.ph" data-i18n-attr="placeholder" style="width: 120px;" maxlength="15" value="%RELAYNAMES3%">
-        </div>
+        <p class="hint" data-i18n="settings.fixedPumpRelayNamesHint">
+          Relay 1–3 are fixed pump outputs and cannot be renamed.
+        </p>
 
         <div class="form-group">
           <label for="webRelay4" data-i18n="settings.relay4">Relay 4:</label>
@@ -950,8 +939,8 @@ const char* htmlPage = R"rawliteral(
         </div>
 
         <div class="form-group relay-extra" id="settingsRelay6Row" style="display:none;">
-          <label for="webRelayName6">Relay 6:</label>
-          <input name="webRelayName6" id="webRelayName6" type="text" placeholder="Relay 6" style="width: 120px;" maxlength="15" value="%RELAYNAMES6%">
+          <label for="webRelayName6" data-i18n="settings.relay6">Relay 6:</label>
+          <input name="webRelayName6" id="webRelayName6" type="text" data-i18n="settings.relay6.ph" data-i18n-attr="placeholder" style="width: 120px;" maxlength="15" value="%RELAYNAMES6%">
         </div>
 
         <button class="primary" id="saveSettingsBtn" data-i18n="settings.save">Speichern</button>

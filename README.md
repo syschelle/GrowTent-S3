@@ -113,6 +113,7 @@ The fixed S3 role layout is:
 - Pump 1 → Relay 1
 - Pump 2 → Relay 2
 - Pump 3 → Relay 3
+- Pump relay names are fixed in the firmware and cannot be changed in System Settings.
 - General relay control, heating selection and minute scheduling → Relays 4–6
 
 Disabled / not connected in this firmware build:
@@ -157,7 +158,7 @@ Preferences keys stored in NVS:
 - `unit`
 - `timeFmt`
 - `ntpSrv`
-- Relay names and relay settings
+- Fixed pump roles for Relay 1–3 and configurable names for Relay 4–6
 - Grow/run settings
 
 Namespace: `growtent`
@@ -318,7 +319,7 @@ Do **not** point an ESP32-S3 device to the classic ESP32 `GrowTent` release chan
 - WiFi: You can set the device to Station mode or keep it in AP mode for direct connection.
 - NTP and timezone: Set the NTP server and POSIX timezone string via the web UI.
 - Relay behavior: Relays are initialized as outputs and default to OFF at startup.
-- Relay names and relay behavior are configurable in the UI.
+- Relay 1–3 are dedicated pump outputs with fixed names. Relay 4–6 names and behavior remain configurable in the UI.
 - Shelly devices can be used alongside the onboard relays.
 - LittleFS is not formatted automatically during boot or OTA updates.
 

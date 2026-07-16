@@ -950,10 +950,15 @@ void handleSaveSettings() {
   savePrefString("webDS18B20Name", KEY_DS18NAME, DS18B20Name);
   savePrefBool("webDS18B20Enable", KEY_DS18B20ENABLE, DS18B20, "DS18B20 Enable");
   savePrefFloat("webPowerPriceKwh", KEY_POWER_PRICE_KWH, powerPriceKwhEur, true, "Power Price €/kWh");
-  savePrefString("webDS18B20Name", KEY_DS18NAME, DS18B20Name);
-  savePrefString("webRelayName1", KEY_RELAY_1, relayNames[0], "Relay 1 Name");
-  savePrefString("webRelayName2", KEY_RELAY_2, relayNames[1], "Relay 2 Name");
-  savePrefString("webRelayName3", KEY_RELAY_3, relayNames[2], "Relay 3 Name");
+
+  // Relay 1..3 are dedicated pump outputs. Their names are fixed and are
+  // intentionally not accepted from the settings form.
+  for (int i = 0; i < PUMP_RELAY_COUNT; ++i) {
+    relayNames[i] = FIXED_PUMP_RELAY_NAMES[i];
+    settings.relay.name[i] = FIXED_PUMP_RELAY_NAMES[i];
+  }
+
+  // Only general-purpose relay names are configurable.
   savePrefString("webRelayName4", KEY_RELAY_4, relayNames[3], "Relay 4 Name");
   if (activeRelayCount >= 5) {
     savePrefString("webRelayName5", KEY_RELAY_5, relayNames[4], "Relay 5 Name");

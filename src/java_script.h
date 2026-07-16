@@ -253,10 +253,16 @@ const char jsContent[] PROGMEM = R"rawliteral(
     de: "Relais Einstellungen",
     en: "Relay Settings"
   },
-  "settings.relay1": { de: "Relaisname 1:", en: "Relay name 1:" },
-  "settings.relay2": { de: "Relaisname 2:", en: "Relay name 2:" },
-  "settings.relay3": { de: "Relaisname 3:", en: "Relay name 3:" },
+  "settings.fixedPumpRelayNamesHint": {
+    de: "Relais 1–3 sind fest den Pumpen 1–3 zugeordnet und können nicht umbenannt werden.",
+    en: "Relays 1–3 are fixed to pumps 1–3 and cannot be renamed."
+  },
   "settings.relay4": { de: "Relaisname 4:", en: "Relay name 4:" },
+  "settings.relay4.ph": { de: "Relais 4", en: "Relay 4" },
+  "settings.relay5": { de: "Relaisname 5:", en: "Relay name 5:" },
+  "settings.relay5.ph": { de: "Relais 5", en: "Relay 5" },
+  "settings.relay6": { de: "Relaisname 6:", en: "Relay name 6:" },
+  "settings.relay6.ph": { de: "Relais 6", en: "Relay 6" },
 
   /* -------------------- message.* -------------------- */
   "message.title": { de: "Nachrichteneinstellungen", en: "Message Settings" },

@@ -5,7 +5,7 @@
 #include <Adafruit_BME280.h>
 #include "freertos/semphr.h"
 
-// -------------------- Konstanten / Defines --------------------
+// -------------------- Constants / defines --------------------
 #define MAX_RELAYS 8
 #ifndef DS18B20_PIN
   #define DS18B20_PIN 4
@@ -37,6 +37,9 @@
 #define PUMP_RELAY_LAST_IDX (PUMP_RELAY_LAST - 1)
 #define PUMP_RELAY_COUNT (PUMP_RELAY_LAST - PUMP_RELAY_FIRST + 1)
 
+// Fixed logical names for the dedicated pump outputs.
+extern const char* const FIXED_PUMP_RELAY_NAMES[PUMP_RELAY_COUNT];
+
 #define CONTROL_RELAY_FIRST 4
 #define CONTROL_RELAY_LAST 6
 #define CONTROL_RELAY_FIRST_IDX (CONTROL_RELAY_FIRST - 1)
@@ -46,7 +49,7 @@ extern int activeRelayCount; // runtime: 4 or 6 on the S3 repo
 extern const char* KEY_RELAY_COUNT;
 extern SemaphoreHandle_t relayMutex;
 
-// -------------------- Structs (erst Typen, dann Settings) --------------------
+// -------------------- Data structures --------------------
 struct DailySchedule {
     int onHour;
     int onMinute;

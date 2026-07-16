@@ -10,6 +10,8 @@ This is the first dedicated GrowTent-S3 release for the Waveshare ESP32-S3-Relay
   - Pump 1 → Relay 1
   - Pump 2 → Relay 2
   - Pump 3 → Relay 3
+- Made the names of Relay 1..3 read-only because they are fixed pump outputs.
+- Removed the Relay 1..3 name inputs from System Settings and ignored legacy stored names.
 - Kept relays 4..6 available for generic switching, minute scheduling and ESP relay heating selection.
 - Added schedule persistence and API state reporting for Relay 6.
 - Updated OTA checks and firmware download URLs to use the new `syschelle/GrowTent-S3` repository.

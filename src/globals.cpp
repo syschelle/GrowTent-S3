@@ -139,11 +139,26 @@ String unit = "metric";
 String timeFormat = "24h";
 bool espMode = false;
 
-// Relay scheduling arrays + relay names (legacy)
+// Relay scheduling arrays and relay names used by legacy UI code.
+const char* const FIXED_PUMP_RELAY_NAMES[PUMP_RELAY_COUNT] = {
+  "Pump 1",
+  "Pump 2",
+  "Pump 3"
+};
+
 bool relaySchedulesEnabled[NUM_RELAYS] = {false};
 int  relaySchedulesStart[NUM_RELAYS] = {0};
 int  relaySchedulesEnd[NUM_RELAYS] = {0};
-String relayNames[NUM_RELAYS] = {"Pumpe 1","Pumpe 2","Pumpe 3","Relay 4","Relay 5","Relay 6","relay 7","relay 8"};
+String relayNames[NUM_RELAYS] = {
+  FIXED_PUMP_RELAY_NAMES[0],
+  FIXED_PUMP_RELAY_NAMES[1],
+  FIXED_PUMP_RELAY_NAMES[2],
+  "Relay 4",
+  "Relay 5",
+  "Relay 6",
+  "relay 7",
+  "relay 8"
+};
 
 // Irrigation
 Irrigation irrigation;

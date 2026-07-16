@@ -7,7 +7,7 @@ Use these commands from the existing local clone of `syschelle/GrowTent-S3` afte
 ```bash
 git status
 git add -A
-git commit -m "Use relays 1-3 for pumps and 4-6 for control"
+git commit -m "Use fixed pump outputs on relays 1-3"
 git push origin main
 ```
 

@@ -273,10 +273,14 @@ void readPreferences() {
   activeRelayCount = (activeRelayCount == 8) ? 8 : 4;
 #endif
 
-  // relays
-  settings.relay.name[0] = preferences.getString(KEY_RELAY_1, (activeRelayCount >= 6) ? "Pumpe 1" : "Relay 1");
-  settings.relay.name[1] = preferences.getString(KEY_RELAY_2, (activeRelayCount >= 6) ? "Pumpe 2" : "Relay 2");
-  settings.relay.name[2] = preferences.getString(KEY_RELAY_3, (activeRelayCount >= 6) ? "Pumpe 3" : "Relay 3");
+  // Pump outputs have fixed hardware roles and therefore fixed names.
+  // Stored values for relay 1..3 are intentionally ignored.
+  for (int i = 0; i < PUMP_RELAY_COUNT; ++i) {
+    settings.relay.name[i] = FIXED_PUMP_RELAY_NAMES[i];
+    relayNames[i] = FIXED_PUMP_RELAY_NAMES[i];
+  }
+
+  // General-purpose relay names remain user-configurable.
   settings.relay.name[3] = preferences.getString(KEY_RELAY_4, "Relay 4");
   if (activeRelayCount >= 5) settings.relay.name[4] = preferences.getString(KEY_RELAY_5, "Relay 5");
   if (activeRelayCount >= 6) settings.relay.name[5] = preferences.getString(KEY_RELAY_6, "Relay 6");
