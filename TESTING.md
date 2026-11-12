@@ -1,4 +1,4 @@
-# Testing — GrowTent-S3 v0.2.0-beta.1
+# Testing — GrowTent-S3 v0.5.3
 
 ## Executed locally
 

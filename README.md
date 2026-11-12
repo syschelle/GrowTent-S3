@@ -8,14 +8,14 @@ GrowTent reads temperature and humidity, computes VPD (Vapor Pressure Deficit), 
 
 > **Important:** This repository is the firmware channel for ESP32-S3 relay hardware only. Classic ESP32 boards should use the original `syschelle/GrowTent` repository.
 
-## Current adaptation: v0.2.0-beta.1
+## Current adaptation: v0.5.3
 
 The current migration uses GrowTent **v0.5.3**, commit `55429b128be26f4f722bc67fdff3555f5f967a94`, with the S3-specific six-relay hardware contract. **Hardware validation is pending.**
 
 - [Migration scope, settings compatibility and rollback](MIGRATION.md)
 - [Testing and open hardware gates](TESTING.md)
 - [Security policy and limitations](SECURITY.md)
-- [Latest release notes](RELEASE_NOTES_v0.2.0-beta.1.md)
+- [Latest release notes](RELEASE_NOTES_v0.5.3.md)
 
 Build: `python -m platformio run -e esp32-s3-relay-6ch`.
 Dashboard/API: `http://<device-ip>:8080/`; read-only state at `/api/state` and `/state`.
@@ -393,7 +393,7 @@ Relays 1–3 reject generic relay control/scheduling/name changes; relays 7/8 do
 
 ## Release workflow
 
-Branch/PR builds run `.github/workflows/build.yml` without publishing a release. The tag workflow builds `esp32-s3-relay-6ch`, generates a compact S3 OTA manifest and publishes `firmware.bin` plus `manifest.json`. Keep matching `RELEASE_NOTES_<tag>.md` in the repository. Debug ELF/build information is retained as an Actions artifact. Do not tag this beta for production before completing the [hardware gates](TESTING.md).
+Branch/PR builds run `.github/workflows/build.yml` without publishing a release. The tag workflow builds `esp32-s3-relay-6ch`, generates a compact S3 OTA manifest and publishes `firmware.bin` plus `manifest.json`. Keep matching `RELEASE_NOTES_<tag>.md` in the repository. Debug ELF/build information is retained as an Actions artifact. Do not tag this adaptation for production before completing the [hardware gates](TESTING.md).
 
 ## Repository split
 

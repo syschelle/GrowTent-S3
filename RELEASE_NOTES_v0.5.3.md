@@ -1,8 +1,8 @@
-# GrowTent-S3 v0.2.0-beta.1
+# GrowTent-S3 v0.5.3
 
 ## Release summary
 
-Adapt the Waveshare ESP32-S3-Relay-6CH firmware to the pinned GrowTent v0.5.3 codebase. This is a validation beta, not a confirmed production hardware release.
+Adapt the Waveshare ESP32-S3-Relay-6CH firmware to the pinned GrowTent v0.5.3 codebase. This adaptation is awaiting hardware validation and is not a confirmed production hardware release.
 
 ## Changes
 

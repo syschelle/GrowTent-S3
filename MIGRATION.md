@@ -1,6 +1,6 @@
 # GrowTent-S3 adaptation from GrowTent v0.5.3
 
-Status: **v0.2.0-beta.1 — hardware validation pending**.
+Status: **v0.5.3 — hardware validation pending**.
 
 ## Provenance
 
@@ -44,7 +44,7 @@ Existing LittleFS is mounted without automatic formatting. There is no filesyste
 
 ## Validation and release gates
 
-See [TESTING.md](TESTING.md) for executed host tests and the still-open hardware gates. This beta must not be treated as a production hardware release. No tag, GitHub Release, firmware upload or merge is performed by preparing the pull request.
+See [TESTING.md](TESTING.md) for executed host tests and the still-open hardware gates. This unvalidated adaptation must not be treated as a production hardware release. No tag, GitHub Release, firmware upload or merge is performed by preparing the pull request.
 
 ## First test and rollback
 
@@ -59,7 +59,7 @@ See [TESTING.md](TESTING.md) for executed host tests and the still-open hardware
 | Date | Decision | Reason |
 |---|---|---|
 | 2026-11-12 | Use v0.5.3 as a pinned upstream base | Current source comparison rather than guessing individual old migration patches |
-| 2026-11-12 | Retain S3 version line; beta v0.2.0-beta.1 | Separate hardware/OTA channel and explicit validation stage |
+| 2026-11-12 | Align S3 version with upstream v0.5.3 | User-requested common version number; S3 OTA channel and hardware validation remain separate |
 | 2026-11-12 | Block generic control of pump channels | Prevent bypass of pump disable flags and irrigation safety logic |
 | 2026-11-12 | Keep six physical outputs with internal eight-slot structures | Preserve upstream type layout without exposing nonexistent GPIOs |
 | 2026-11-12 | Add a build/contract-test workflow on branches and PRs | Tag-only release workflow did not validate proposed adaptations |

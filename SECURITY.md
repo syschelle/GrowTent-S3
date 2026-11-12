@@ -1,6 +1,6 @@
 # Security — GrowTent-S3
 
-This beta imports the security behavior of GrowTent v0.5.3. It is not a hardware-validated production release.
+This adaptation imports the security behavior of GrowTent v0.5.3. It is not a hardware-validated production release.
 
 Use the controller on a trusted local network. The general dashboard/relay/pump APIs are not covered by the optional backend HMAC endpoint. Do not expose the controller directly to the Internet. Some inherited outbound HTTPS clients use `setInsecure()`; certificate validation is not provided on those paths. See the actual source before relying on transport authenticity.
 
