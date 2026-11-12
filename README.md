@@ -201,9 +201,9 @@ UI highlights:
 - Status page
 - OTA update page
 
-The S3 version keeps the same UI concept and screenshots as the classic GrowTent project.
+GrowTent-S3 v0.5.3 running on the Waveshare ESP32-S3-Relay-6CH: dedicated Pump 1–3 on relays 1–3, with general-purpose control relays 4–6.
 
-<img width="1702" height="1124" alt="GrowTent web UI" src="https://github.com/user-attachments/assets/5439fcfe-d08a-42a5-b105-eb2148a9d6f3" />
+![GrowTent-S3 v0.5.3 status dashboard with three dedicated pumps and control relays 4–6](docs/images/growtent-s3-v0.5.3-status.png)
 
 Languages provided (i18n):
 
