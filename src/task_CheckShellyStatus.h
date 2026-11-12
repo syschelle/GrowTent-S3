@@ -2,30 +2,75 @@
 #include <Arduino.h>
 #include <Preferences.h>
 #include "globals.h"
+#include "ota.h"
 #include <cstdarg>
 
 extern Preferences preferences;
 extern int amountOfWater;
 
 void taskShellyStatus(void *parameter){
-  static UBaseType_t minFree = UINT32_MAX;
-  static ShellyValues lastGoodMain;
-  static ShellyValues lastGoodLight;
-  static ShellyValues lastGoodHumidifier;
-  static ShellyValues lastGoodHeater;
-  static ShellyValues lastGoodFan;
-  static ShellyValues lastGoodExhaust;
-  static bool haveMainGood = false;
-  static bool haveLightGood = false;
-  static bool haveHumidifierGood = false;
-  static bool haveHeaterGood = false;
-  static bool haveFanGood = false;
-  static bool haveExhaustGood = false;
+  static UBaseType_t minFreeBytes = UINT32_MAX;
+
+  struct PollState {
+    ShellyValues lastGood;
+    bool haveGood = false;
+    uint32_t retryAfterMs = 0;
+  };
+
+  static PollState mainState;
+  static PollState lightState;
+  static PollState humidifierState;
+  static PollState heaterState;
+  static PollState fanState;
+  static PollState exhaustState;
+  static PollState heatmatState;
+
+  constexpr uint32_t RETRY_BACKOFF_MS = 30000UL;
+
+  auto pollDevice = [&](ShellyDevice& configured, ShellyDevice& runtime, PollState& state) {
+    // An empty IP means "not configured". Never poll it and never emit an error.
+    if (configured.ip.length() == 0) {
+      runtime.values = ShellyValues{};
+      state.haveGood = false;
+      state.retryAfterMs = 0;
+      return;
+    }
+
+    const uint32_t now = millis();
+    if (state.retryAfterMs != 0 && (int32_t)(now - state.retryAfterMs) < 0) {
+      return;
+    }
+
+    ShellyValues current = getShellyValues(configured, 0);
+    if (current.ok) {
+      runtime.values = current;
+      state.lastGood = current;
+      state.haveGood = true;
+      state.retryAfterMs = 0;
+      return;
+    }
+
+    // Keep the last valid reading on transient failures. Retry later instead of
+    // running the same unreachable device into an HTTP timeout every 10 seconds.
+    if (state.haveGood) {
+      runtime.values = state.lastGood;
+    } else {
+      runtime.values = ShellyValues{};
+    }
+    state.retryAfterMs = now + RETRY_BACKOFF_MS;
+  };
 
   for (;;) {
-    UBaseType_t freeWords = uxTaskGetStackHighWaterMark(NULL);
-    if (freeWords < minFree) {
-      minFree = freeWords;
+    if (otaMaintenanceRequested()) {
+      Serial.println("[OTA MAINT] Shelly task releasing stack");
+      otaNotifyMaintenanceTaskStopped(OTA_MAINT_TASK_SHELLY);
+      vTaskDelete(nullptr);
+      return;
+    }
+
+    UBaseType_t freeBytes = uxTaskGetStackHighWaterMark(NULL);
+    if (freeBytes < minFreeBytes) {
+      minFreeBytes = freeBytes;
     }
 
     static uint32_t lastLogMs = 0;
@@ -35,77 +80,42 @@ void taskShellyStatus(void *parameter){
       lastLogMs = millis();
 
       char buf[96];
-
       snprintf(
         buf,
         sizeof(buf),
-        "[TASK][CheckShellyStatus] free=%u words (%u bytes), min=%u words",
-        freeWords,
-        freeWords * sizeof(StackType_t),
-        minFree
+        "[TASK][CheckShellyStatus] free=%u bytes, min=%u bytes",
+        freeBytes,
+        minFreeBytes
       );
-
       logPrint(String(buf));
-  }
-
-    // Read Shelly main; keep previous good value on transient request failure
-    ShellyValues mainNow = getShellyValues(settings.shelly.main, 0);
-    if (mainNow.ok) {
-      shelly.main.values = mainNow;
-      lastGoodMain = mainNow;
-      haveMainGood = true;
-    } else if (haveMainGood) {
-      shelly.main.values = lastGoodMain;
     }
 
-    // Read Shelly light; keep previous good value on transient request failure
-    ShellyValues lightNow = getShellyValues(settings.shelly.light, 0);
-    if (lightNow.ok) {
-      shelly.light.values = lightNow;
-      lastGoodLight = lightNow;
-      haveLightGood = true;
-    } else if (haveLightGood) {
-      shelly.light.values = lastGoodLight;
+    // Do not start a second outbound HTTP transaction while the OTA worker is
+    // streaming the firmware from GitHub. Local sensor/watering control keeps
+    // running; only Shelly status polling is briefly paused.
+    if (otaIsUpdateInProgress()) {
+      vTaskDelay(pdMS_TO_TICKS(500));
+      continue;
     }
 
-    ShellyValues humNow = getShellyValues(settings.shelly.humidifier, 0);
-    if (humNow.ok) {
-      shelly.humidifier.values = humNow;
-      lastGoodHumidifier = humNow;
-      haveHumidifierGood = true;
-    } else if (haveHumidifierGood) {
-      shelly.humidifier.values = lastGoodHumidifier;
+    // Poll exactly one Shelly per step instead of all configured devices back-to-back.
+    // This keeps an unreachable device from creating a multi-second burst of
+    // consecutive network timeouts that can make the web UI feel unresponsive.
+    static uint8_t pollIndex = 0;
+    switch (pollIndex) {
+      case 0: pollDevice(settings.shelly.main,       shelly.main,       mainState); break;
+      case 1: pollDevice(settings.shelly.light,      shelly.light,      lightState); break;
+      case 2: pollDevice(settings.shelly.humidifier, shelly.humidifier, humidifierState); break;
+      case 3: pollDevice(settings.shelly.heater,     shelly.heater,     heaterState); break;
+      case 4: pollDevice(settings.shelly.fan,        shelly.fan,        fanState); break;
+      case 5: pollDevice(settings.shelly.exhaust,    shelly.exhaust,    exhaustState); break;
+      default: pollDevice(settings.shelly.heatmat,   shelly.heatmat,    heatmatState); break;
     }
+    pollIndex = (pollIndex + 1) % 7;
 
-    ShellyValues heaterNow = getShellyValues(settings.shelly.heater, 0);
-    if (heaterNow.ok) {
-      shelly.heater.values = heaterNow;
-      lastGoodHeater = heaterNow;
-      haveHeaterGood = true;
-    } else if (haveHeaterGood) {
-      shelly.heater.values = lastGoodHeater;
-    }
-
-    ShellyValues fanNow = getShellyValues(settings.shelly.fan, 0);
-    if (fanNow.ok) {
-      shelly.fan.values = fanNow;
-      lastGoodFan = fanNow;
-      haveFanGood = true;
-    } else if (haveFanGood) {
-      shelly.fan.values = lastGoodFan;
-    }
-
-    ShellyValues exhaustNow = getShellyValues(settings.shelly.exhaust, 0);
-    if (exhaustNow.ok) {
-      shelly.exhaust.values = exhaustNow;
-      lastGoodExhaust = exhaustNow;
-      haveExhaustGood = true;
-    } else if (haveExhaustGood) {
-      shelly.exhaust.values = lastGoodExhaust;
-    }
-
-
-    // task delay 10 seconds
-    vTaskDelay(pdMS_TO_TICKS(10000)); 
+    // Seven steps at 1.4 s keep the per-device refresh close to the existing
+    // ~10 s cadence while avoiding a burst of consecutive HTTP operations.
+    // Empty IPs are skipped without any network request.
+    vTaskDelay(pdMS_TO_TICKS(1400));
   }
 }

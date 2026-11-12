@@ -40,12 +40,20 @@ const char* htmlPage = R"rawliteral(
   <title>%CONTROLLERNAME%</title>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="/style.css">
-<body>
+  <link rel="stylesheet" href="/style.css?v=0.5.3">
+<body data-temp-unit="%UNIT%">
   <header class="header">
     <button class="hamburger" id="hamburgerBtn" data-i18n="a11y.menu" data-i18n-attr="aria-label" aria-label="Menü öffnen/schließen" aria-expanded="false" aria-controls="sidebar">☰</button>
-    <div class="title" data-i18n="app.title">%CONTROLLERNAME%</div>
+    <div class="title-stack">
+      <div class="title" data-i18n="app.title">%CONTROLLERNAME%</div>
+      <div class="firmware-version">%FWVERSION%</div>
+    </div>
     <span id="unsavedHint" class="dirty-hint" hidden data-i18n="settings.unsaved"></span>
+    <span id="headerHmacStatus" class="hmac-header-status" %BACKEND_HMAC_HIDDEN% title="HMAC-SHA256 Backend Write API active">HMAC</span>
+    <div id="headerFloodStatus" class="flood-header-status flood-unknown" hidden title="Flood S Gen4">
+      <span id="headerFloodMain">Flood: –</span>
+      <span id="headerFloodMeta" class="flood-header-meta"></span>
+    </div>
     <div class='grow-info'>%CURRENTGROW%<BR>%CURRENTPHASE%</div>
     <div id="grow-line" data-i18n-key="info.growLine"></div>
     <div class="datetime">
@@ -87,7 +95,7 @@ const char* htmlPage = R"rawliteral(
           <div class="twoinone-label">
             <div class="metric-label" data-i18n="status.temperature">Temperatur</div>
             <div class="metric-value">
-              <span id="tempSpan">–</span><span class="unit">°C</span>
+              <span id="tempSpan">–</span><span class="unit" data-temp-unit-label>°C</span>
             </div>
           </div>
           <div class="spacer"></div>
@@ -95,7 +103,7 @@ const char* htmlPage = R"rawliteral(
             <div class="twoinone-label">
               <span data-i18n="status.targetTemp">Soll</span>
               <div class="metric-value">
-                <span id="targetTempStatus">%TARGETTEMPERATURE%</span> <span class="unit">°C</span>
+                <span id="targetTempStatus" data-celsius-value="%TARGETTEMPERATURE%">%TARGETTEMPERATURE%</span> <span class="unit" data-temp-unit-label>°C</span>
               </div>
             </div>
           </div>
@@ -104,7 +112,7 @@ const char* htmlPage = R"rawliteral(
             <div class="twoinone-label">
               <div class="metric-label">%DS18B20NAME%</div>
               <div class="metric-value">
-                <span id="ext1TempSpan">%WATERTEMPERATURE%</span><span class="unit">°C</span>
+                <span id="ext1TempSpan" data-celsius-value="%WATERTEMPERATURE%">%WATERTEMPERATURE%</span><span class="unit" data-temp-unit-label>°C</span>
             </div>
           </div>
         </div>
@@ -140,7 +148,7 @@ const char* htmlPage = R"rawliteral(
             <div class="twoinone-label">
               <span data-i18n="runsetting.offsetLeafTemperature">Offset Blatttemperatur:</span>
               <div class="metric-value">
-                <span id="leafTempStatus">%LEAFTEMPERATURE%</span> <span class="unit">°C</span>
+                <span id="leafTempStatus" data-celsius-value="%LEAFTEMPERATURE%">%LEAFTEMPERATURE%</span> <span class="unit" data-temp-unit-label>°C</span>
               </div>
             </div>
           </div>
@@ -150,68 +158,55 @@ const char* htmlPage = R"rawliteral(
 
     <h2 data-i18n="status.relayControl">Relais Steuerung</h2>
     <div class="relay-row" id="relayRow">
-      <div class="relay-card relay-normal" data-relay="1" id="relayCard1" style="display:none;">
-        <div class="relay-title">%RELAYNAMES1%</div>
-        <div class="relay-status" id="relay-Status1" data-relay-status="1"></div>
-        <div class="spacer"></div>
-        <button class="primary" data-i18n="status.toggleRelay" onclick="toggleRelay(1)">Toggle</button>
-      </div>
-      <div class="relay-card relay-normal" data-relay="2" id="relayCard2" style="display:none;">
-        <div class="relay-title">%RELAYNAMES2%</div>
-        <div class="relay-status" id="relay-Status2" data-relay-status="2"></div>
-        <div class="spacer"></div>
-        <button class="primary" data-i18n="status.toggleRelay" onclick="toggleRelay(2)">Toggle</button>
-      </div>
-      <div class="relay-card relay-normal" data-relay="3" id="relayCard3" style="display:none;">
-        <div class="relay-title">%RELAYNAMES3%</div>
-        <div class="relay-status" id="relay-Status3" data-relay-status="3"></div>
-        <div class="spacer"></div>
-        <button class="primary" data-i18n="status.toggleRelay" onclick="toggleRelay(3)">Toggle</button>
-      </div>
-      <div class="relay-card relay-normal" data-relay="4" id="relayCard4">
+
+
+
+      <div class="relay-card" data-relay="4">
         <div class="relay-title">%RELAYNAMES4%</div>
-        <div class="relay-status" id="relay-Status4" data-relay-status="4"></div>
+        <div class="relay-status" id="relay-Status4"></div>
         <div class="spacer"></div>
         <button class="primary" data-i18n="status.toggleRelay" onclick="toggleRelay(4)">Toggle</button>
       </div>
-      <div class="relay-card relay-normal relay-extra" data-relay="5" id="relayCard5">
+      <div class="relay-card relay-extra" data-relay="5" id="relayCard5" style="display:none;">
         <div class="relay-title">%RELAYNAMES5%</div>
-        <div class="relay-status" id="relay-Status5" data-relay-status="5"></div>
+        <div class="relay-status" id="relay-Status5"></div>
         <div class="spacer"></div>
         <button class="primary" data-i18n="status.toggleRelay" onclick="toggleRelay(5)">Toggle</button>
-      </div>
-      <div class="relay-card relay-normal relay-extra" data-relay="6" id="relayCard6">
+      </div><div class="relay-card relay-extra" data-relay="6" id="relayCard6" style="display:none;">
         <div class="relay-title">%RELAYNAMES6%</div>
-        <div class="relay-status" id="relay-Status6" data-relay-status="6"></div>
+        <div class="relay-status" id="relay-Status6"></div>
         <div class="spacer"></div>
         <button class="primary" data-i18n="status.toggleRelay" onclick="toggleRelay(6)">Toggle</button>
       </div>
     </div>
     <div class="spacer"></div>
-    
+
     <div class="tile-row" id="irrigationSection" style="display:none;">
       <div class="tile">
         <h2 data-i18n="status.irrigation">Irrigation</h2>
-         <div class="relay-row" id="relayRow">
+         <div class="relay-row" id="irrigationRelayRow">
           <div class="relay-card irrigation" data-relay="1" id="irrigationRelay1">
-            <div class="relay-title" data-i18n="status.irrigationRelay1">Pumpe 1 Relay 1</div>
-            <div class="relay-status" id="pump-Status1" data-relay-status="1"></div>
+            <div class="relay-title" data-i18n="status.irrigationRelay1">Pump 1 (Relay 1)</div>
+            <div class="relay-status" id="relay-Status1"></div>
             <div class="spacer"></div>
-            <button type="button" class="primary" data-i18n="status.togglePump10s" onclick="triggerPump10s(1)">Toggle</button>
+            <div class="pump-disabled-action" id="pumpDisabledAction1" data-i18n="status.pumpDisabled">Deaktiviert</div>
+            <button type="button" class="primary" id="pumpButton1" data-i18n="status.togglePump10s" onclick="triggerPump10s(1)" disabled hidden>Toggle</button>
           </div>
 
           <div class="relay-card irrigation" data-relay="2" id="irrigationRelay2">
-            <div class="relay-title" data-i18n="status.irrigationRelay2">Pumpe 2 Relay 2</div>
-            <div class="relay-status" id="pump-Status2" data-relay-status="2"></div>
+            <div class="relay-title" data-i18n="status.irrigationRelay2">Pump 2 (Relay 2)</div>
+            <div class="relay-status" id="relay-Status2"></div>
             <div class="spacer"></div>
-            <button type="button" class="primary" data-i18n="status.togglePump10s" onclick="triggerPump10s(2)">Toggle</button>
+            <div class="pump-disabled-action" id="pumpDisabledAction2" data-i18n="status.pumpDisabled">Deaktiviert</div>
+            <button type="button" class="primary" id="pumpButton2" data-i18n="status.togglePump10s" onclick="triggerPump10s(2)" disabled hidden>Toggle</button>
           </div>
 
           <div class="relay-card irrigation" data-relay="3" id="irrigationRelay3">
-            <div class="relay-title" data-i18n="status.irrigationRelay3">Pumpe 3 Relay 3</div>
-            <div class="relay-status" id="pump-Status3" data-relay-status="3"></div>
+            <div class="relay-title" data-i18n="status.irrigationRelay3">Pump 3 (Relay 3)</div>
+            <div class="relay-status" id="relay-Status3"></div>
             <div class="spacer"></div>
-            <button type="button" class="primary" data-i18n="status.togglePump10s" onclick="triggerPump10s(3)">Toggle</button>
+            <div class="pump-disabled-action" id="pumpDisabledAction3" data-i18n="status.pumpDisabled">Deaktiviert</div>
+            <button type="button" class="primary" id="pumpButton3" data-i18n="status.togglePump10s" onclick="triggerPump10s(3)" disabled hidden>Toggle</button>
           </div>
 
           <!-- watering section -->
@@ -222,9 +217,9 @@ const char* htmlPage = R"rawliteral(
             </div>
             <div class="metric-value">
               <span class="unit" data-i18n="status.endIn" >Ende in </span><span id="irTimeLeftSpan"  ></span>
-            </div> 
+            </div>
             <div class="spacermini"></div>
-            <button class="primary" onclick="startWatering()">Toggle</button>
+            <button class="primary" id="startWateringButton" onclick="toggleWatering()" disabled>Bewässerung starten</button>
           </div>
           <div class="relay-card" data-relay="TankFilling">
             <div class="relay-title" data-i18n="status.tank">Tank Füllung</div>
@@ -244,7 +239,7 @@ const char* htmlPage = R"rawliteral(
 
     <div class="spacer"></div>
     <h2 data-i18n="status.shellyControl">Shelly Steuerung</h2>
-    <div class="relay-row" id="relayRow">
+    <div class="relay-row" id="shellyRelayRow">
       <div class="relay-card" data-relay="shellyMainSw">
         <div class="relay-title" data-i18n="status.shellyMainSw">Hauptschalter</div>
         <div id="shelly-main-switch-state" class="shelly-status shelly-off"></div>
@@ -256,33 +251,43 @@ const char* htmlPage = R"rawliteral(
         <div id="shelly-light-switch-state" class="shelly-status shelly-off"></div>
         <div class="info" id="shellyLightInfo">—</div>
         <button class="primary" data-i18n="status.toggleRelay" onclick="toggleShellyRelay('light')">Toggle</button>
+        <button class="primary shelly-refresh-button" data-i18n="shelly.refreshSchedule" onclick="refreshShellySchedule('light', this)">Schedule neu einlesen</button>
       </div>
       <div class="relay-card" data-relay="shellyHumidifier">
         <div class="relay-title" data-i18n="status.shellyHumidifier">Luftbefeuchter</div>
         <div id="shelly-humidifier-switch-state" class="shelly-status shelly-off"></div>
         <div class="info" id="shellyHumidifierInfo">—</div>
         <button class="primary" data-i18n="status.toggleRelay" onclick="toggleShellyRelay('humidifier')">Toggle</button>
+        <button class="primary shelly-refresh-button" data-i18n="shelly.refreshSchedule" onclick="refreshShellySchedule('humidifier', this)">Schedule neu einlesen</button>
       </div>
       <div class="relay-card" data-relay="shellyHeater">
         <div class="relay-title" data-i18n="status.shellyHeater">Heizung</div>
         <div id="shelly-heater-switch-state" class="shelly-status shelly-off"></div>
         <div class="info" id="shellyHeaterInfo">—</div>
         <button class="primary" data-i18n="status.toggleRelay" onclick="toggleShellyRelay('heater')">Toggle</button>
+        <button class="primary shelly-refresh-button" data-i18n="shelly.refreshSchedule" onclick="refreshShellySchedule('heater', this)">Schedule neu einlesen</button>
       </div>
       <div class="relay-card" data-relay="shellyFan">
         <div class="relay-title" data-i18n="status.shellyFan">Lüfter</div>
         <div id="shelly-fan-switch-state" class="shelly-status shelly-off"></div>
         <div class="info" id="shellyFanInfo">—</div>
         <button class="primary" data-i18n="status.toggleRelay" onclick="toggleShellyRelay('fan')">Toggle</button>
+        <button class="primary shelly-refresh-button" data-i18n="shelly.refreshSchedule" onclick="refreshShellySchedule('fan', this)">Schedule neu einlesen</button>
       </div>
       <div class="relay-card" data-relay="shellyExhaust">
         <div class="relay-title" data-i18n="status.shellyExhaust">Abluft</div>
         <div id="shelly-exhaust-switch-state" class="shelly-status shelly-off"></div>
         <div class="info" id="shellyExhaustInfo">—</div>
         <button class="primary" data-i18n="status.toggleRelay" onclick="toggleShellyRelay('exhaust')">Toggle</button>
+        <button class="primary shelly-refresh-button" data-i18n="shelly.refreshSchedule" onclick="refreshShellySchedule('exhaust', this)">Schedule neu einlesen</button>
+      </div>
+      <div class="relay-card" data-relay="shellyHeatMat" id="shellyHeatMatCard" style="display:none;">
+        <div class="relay-title" data-i18n="status.shellyHeatMat">Heizmatte</div>
+        <div id="shelly-heatmat-switch-state" class="shelly-status shelly-off"></div>
+        <div class="info" id="shellyHeatMatInfo">—</div>
       </div>
     </div>
-    
+
     </section>
 
     <!-- diary section -->
@@ -337,7 +342,7 @@ const char* htmlPage = R"rawliteral(
 
     <div class="spacer"></div>
     <!-- shellysettings section -->
-    <form action="/saveshellysettings" method="POST">
+    <form id="shellySettingsForm" onsubmit="event.preventDefault(); window.saveShellySettingsAll(event); return false;">
     <section id="shelly" class="page card">
       <h1 data-i18n="shelly.title">Shelly Einstellungen</h1>
       <h2 data-i18n="status.shellyDevices">Shelly Geräte</h2>
@@ -345,11 +350,7 @@ const char* htmlPage = R"rawliteral(
         <label for="shellyIP" data-i18n="shelly.shellyIPMainSw">Shelly IP Adresse für Hauptschalter:</label>
         <div class="twoinone-label">
           <input name="webShellyMainIP" id="shellyMainSwIP" class="control-sm shelly-ip" maxlength="15" type="text" inputmode="decimal" value="%SHELLYMAINIP%">
-          <select name="webShellyMainGen" id="shellyMainSwGen" class="control-sm shelly-other">
-            <option value="1" %SHMAINSWKIND1%>Gen1</option>
-            <option value="2" %SHMAINSWKIND2%>Gen2</option>
-            <option value="3" %SHMAINSWKIND3%>Gen3</option>
-          </select>
+          <strong class="shelly-gen-detected" id="shellyMainSwGenDetected">—</strong>
         </div>
       </div>
 
@@ -357,14 +358,11 @@ const char* htmlPage = R"rawliteral(
         <label for="shellyIP" data-i18n="shelly.shellyIPLight">Shelly IP Adresse für Pflanzlicht:</label>
         <div class="twoinone-label">
           <input name="webShellyLightIP" id="shellyLightIP" class="control-sm shelly-ip" maxlength="15" type="text" inputmode="decimal" value="%SHELLYLIGHTIP%">
-          <select name="webShellyLightGen" id="shellyLightGen" class="control-sm shelly-other">
-            <option value="1" %SHLIGHTKIND1%>Gen1</option>
-            <option value="2" %SHLIGHTKIND2%>Gen2</option>
-            <option value="3" %SHLIGHTKIND3%>Gen3</option>
-          </select>
+          <strong class="shelly-gen-detected" id="shellyLightGenDetected">—</strong>
           <select name="webShellyLightOnTime" id="shellyLightOnTime" class="control-sm shelly-other"></select>
           <select name="webShellyLightDayHours" id="shellyLightDayHours" class="control-sm shelly-other"></select>
           <input name="webShellyLightOffTime" id="shellyLightOffTime" class="control-sm shelly-other" type="text" readonly value="—">
+          <button type="button" class="primary shelly-refresh-button" data-i18n="shelly.refreshSchedule" onclick="refreshShellySchedule('light', this)">Schedule neu einlesen</button>
         </div>
       </div>
 
@@ -372,11 +370,7 @@ const char* htmlPage = R"rawliteral(
         <label for="shellyIP" data-i18n="shelly.shellyIPHumidifier">Shelly IP Adresse für Luftbefeuchter:</label>
         <div class="twoinone-label">
           <input name="webShellyHumidifierIP" id="shellyHumidifierIP" class="control-sm shelly-ip" maxlength="15" type="text" inputmode="decimal" value="%SHELLYHUMIDIFIERIP%">
-          <select name="webShellyHumidifierGen" id="shellyHumidifierGen" class="control-sm shelly-other">
-            <option value="1" %SHHUMIDIFIERKIND1%>Gen1</option>
-            <option value="2" %SHHUMIDIFIERKIND2%>Gen2</option>
-            <option value="3" %SHHUMIDIFIERKIND3%>Gen3</option>
-          </select>
+          <strong class="shelly-gen-detected" id="shellyHumidifierGenDetected">—</strong>
         </div>
       </div>
 
@@ -384,11 +378,7 @@ const char* htmlPage = R"rawliteral(
         <label for="shellyIP" data-i18n="shelly.shellyIPHeater">Shelly IP Adresse für Heizgerät:</label>
         <div class="twoinone-label">
           <input name="webShellyHeaterIP" id="shellyHeaterIP" class="control-sm shelly-ip" maxlength="15" type="text" inputmode="decimal" value="%SHELLYHEATERIP%">
-          <select name="webShellyHeaterGen" id="shellyHeaterGen" class="control-sm shelly-other">
-            <option value="1" %SHHEATERKIND1%>Gen1</option>
-            <option value="2" %SHHEATERKIND2%>Gen2</option>
-            <option value="3" %SHHEATERKIND3%>Gen3</option>
-          </select>
+          <strong class="shelly-gen-detected" id="shellyHeaterGenDetected">—</strong>
         </div>
       </div>
 
@@ -396,11 +386,7 @@ const char* htmlPage = R"rawliteral(
         <label for="shellyIP" data-i18n="shelly.shellyIPFan">Shelly IP Adresse für Lüfter:</label>
         <div class="twoinone-label">
           <input name="webShellyFanIP" id="shellyFanIP" class="control-sm shelly-ip" maxlength="15" type="text" inputmode="decimal" value="%SHELLYFANIP%">
-          <select name="webShellyFanGen" id="shellyFanGen" class="control-sm shelly-other">
-            <option value="1" %SHFANKIND1%>Gen1</option>
-            <option value="2" %SHFANKIND2%>Gen2</option>
-            <option value="3" %SHFANKIND3%>Gen3</option>
-          </select>
+          <strong class="shelly-gen-detected" id="shellyFanGenDetected">—</strong>
         </div>
       </div>
 
@@ -408,12 +394,53 @@ const char* htmlPage = R"rawliteral(
         <label for="shellyIP" data-i18n="shelly.shellyExhaust">Shelly IP Adresse für Abluft:</label>
         <div class="twoinone-label">
           <input name="webShellyExhaustIP" id="shellyExhaustIP" class="control-sm shelly-ip" maxlength="15" type="text" inputmode="decimal" value="%SHELLYEXHAUSTIP%">
-          <select name="webShellyExhaustGen" id="shellyExhaustGen" class="control-sm shelly-other">
-            <option value="1" %SHEXHAUSTKIND1%>Gen1</option>
-            <option value="2" %SHEXHAUSTKIND2%>Gen2</option>
-            <option value="3" %SHEXHAUSTKIND3%>Gen3</option>
-          </select>
+          <strong class="shelly-gen-detected" id="shellyExhaustGenDetected">—</strong>
         </div>
+      </div>
+
+      <div class="form-group">
+        <label for="shellyHeatMatIP" data-i18n="shelly.shellyIPHeatMat">Shelly IP Adresse für Heizmatte:</label>
+        <div class="twoinone-label">
+          <input name="webShellyHeatMatIP" id="shellyHeatMatIP" class="control-sm shelly-ip" maxlength="15" type="text" inputmode="decimal" value="%SHELLYHEATMATIP%">
+          <strong class="shelly-gen-detected" id="shellyHeatMatGenDetected">—</strong>
+        </div>
+        <small data-i18n="shelly.heatMatMonitorOnly">Nur Monitoring; die Heizmatte wird vom GrowTent nicht geschaltet.</small>
+      </div>
+
+      <h2 data-i18n="shelly.floodTitle">Flood S Gen4</h2>
+      <div class="form-group">
+        <label>
+          <input name="webFloodEnabled" id="floodEnabled" type="checkbox" %FLOOD_ENABLED_CHECKED% onchange="updateFloodWebhookPreview()">
+          <span data-i18n="shelly.floodEnabled">Flood S Gen4 Webhook aktivieren</span>
+        </label>
+      </div>
+
+      <div class="form-group">
+        <label for="floodToken" data-i18n="shelly.floodToken">Webhook Token:</label>
+        <div class="twoinone-label">
+          <input name="webFloodToken" id="floodToken" class="control-sm" style="width:320px;max-width:100%;" type="text" maxlength="64" autocomplete="off" value="%FLOOD_TOKEN%" oninput="updateFloodWebhookPreview()">
+          <button type="button" class="primary" data-i18n="shelly.floodGenerateToken" onclick="generateFloodToken()">Token erzeugen</button>
+        </div>
+        <small data-i18n="shelly.floodTokenHint">Der Token bleibt ausschließlich im GrowTent-Controller und wird nicht über /api/state ausgegeben.</small>
+      </div>
+
+      <h3 data-i18n="shelly.floodApiLinks">API Links für Shelly Actions</h3>
+      <div class="form-group">
+        <label for="floodAlarmUrl" data-i18n="shelly.floodAlarmUrl">URL für „Flood alarm“:</label>
+        <div class="twoinone-label">
+          <input id="floodAlarmUrl" class="control-sm" type="text" readonly style="width:100%;max-width:760px;">
+          <button type="button" class="primary" data-i18n="shelly.copyLink" onclick="copyFloodUrl('floodAlarmUrl')">Kopieren</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="floodClearUrl" data-i18n="shelly.floodClearUrl">URL für „Flood alarm off“:</label>
+        <div class="twoinone-label">
+          <input id="floodClearUrl" class="control-sm" type="text" readonly style="width:100%;max-width:760px;">
+          <button type="button" class="primary" data-i18n="shelly.copyLink" onclick="copyFloodUrl('floodClearUrl')">Kopieren</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <small data-i18n="shelly.floodHint">Diese beiden URLs im Flood S Gen4 unter Actions hinterlegen. Der GrowTent-Controller pollt den Batteriesensor nicht.</small>
       </div>
 
       <h2 data-i18n="status.shellyAuth">Shelly Authentifizierung</h2>
@@ -424,360 +451,249 @@ const char* htmlPage = R"rawliteral(
 
       <div class="form-group">
         <label for="shellyPassword" data-i18n="shelly.shellyAuthPassword">Shelly Passwort:</label>
-        <input name="webShellyPassword" id="shellyPassword" class="control-sm shelly-other" type="password" value="%SHPASSWORD%">
+        <input name="webShellyPassword" id="shellyPassword" class="control-sm shelly-other" type="password" autocomplete="new-password" data-i18n="shelly.shellyAuthPassword.ph" data-i18n-attr="placeholder" value="%SHPASSWORD%">
       </div>
-      
+
       <div class="spacer"></div>
-        <button class="primary" id="saveshellysettingsBtn" data-i18n="settings.save">Speichern</button>
+        <button type="button" class="primary" id="saveshellysettingsBtn" data-i18n="settings.save" onclick="window.saveShellySettingsAll(event)">Speichern</button>
     </form>
     </section>
 
     <!-- runsettings section -->
-    <section id="runsettings" class="page card">
-      <h1 data-i18n="runsetting.title">Betriebseinstellungen</h1>
-
-      <div class="form-group">
-        <div class="tile-right-settings">
-          <div class="form-group">
-            <button type="button" class="primary" id="saverunsettingsBtn" data-i18n="runsetting.resetkWh" onclick="resetShellyEnergy(this)">Reset Shelly kWh</button>
+    <section id="runsettings" class="page card runsettings-page">
+      <div class="runsettings-page-head">
+        <h1 data-i18n="runsetting.title">Betriebseinstellungen</h1>
+        <div class="runsettings-head-actions">
+          <div class="runsettings-phase-control">
+            <label for="phaseSelect" data-i18n="runsetting.phase">Aktuelle Phase:</label>
+            <select id="phaseSelect" name="webCurrentPhase">
+              <option value="1" %PHASE1_SEL% data-i18n="runsetting.phase.grow">Wuchs</option>
+              <option value="2" %PHASE2_SEL% data-i18n="runsetting.phase.flower">Blüte</option>
+              <option value="3" %PHASE3_SEL% data-i18n="runsetting.phase.dry">Trocknung</option>
+            </select>
           </div>
-          <div class="form-group">
-            <label for="webGrowStart" data-i18n="runsetting.startGrow">Start Grow Date:</label>
-            <input id="webGrowStart" name="webGrowStart" type="date" style="width: 170px;" value="%GROWSTARTDATE%">
-          </div>
-          <div class="form-group">
-            <label for="webFloweringStart" data-i18n="runsetting.startFlower">Start Flowering Date:</label>
-            <input id="webFloweringStart" name="webFloweringStart" type="date" style="width: 170px;" value="%GROWFLOWERDATE%">
-          </div>
-          <div class="form-group">
-            <label for="webDryingStart" data-i18n="runsetting.startDry">Start Drying Date:</label>
-            <input id="webDryingStart" name="webDryingStart" type="date" style="width: 170px;" value="%GROWDRAYINGDATE%">
-          </div>
-        </div>
-
-        <div class="form-group">
-        <label for="phaseSelect" data-i18n="runsetting.phase">Phase:</label>
-        <select id="phaseSelect" name="webCurrentPhase" style="width: 170px;">
-          <option value="1" %PHASE1_SEL% data-i18n="runsetting.phase.grow">Wuchs</option>
-          <option value="2" %PHASE2_SEL% data-i18n="runsetting.phase.flower">Blüte</option>
-          <option value="3" %PHASE3_SEL% data-i18n="runsetting.phase.dry">Trocknung</option>
-        </select>
-        </div>
-
-      <div class="form-group">
-        <label for="targetTemp" data-i18n="runsetting.targetTemp">Soll-Temperatur:</label>
-        <input name="webTargetTemp" id="webTargetTemp" style="width: 65px;" type="number" step="0.1" min="18" max="30" value="%TARGETTEMPERATURE%">&nbsp;°C
-      </div>
-
-      <div class="form-group">
-        <label for="leafTemp" data-i18n="runsetting.offsetLeafTemperature">Offset Blatttemperatur:</label>
-        <input name="webOffsetLeafTemp" id="webOffsetLeafTemp" style="width: 65px;" type="number" step="0.1" min="-3.0" max="0.0" value="%LEAFTEMPERATURE%">&nbsp;°C
-      </div>
-
-      <div class="tile-row relay-extra" id="vpdSettingsSection">
-        <h2 data-i18n="runsetting.vpdSettings">VPD-Einstellungen</h2>
-
-        <div class="form-group checkbox">
-          <label class="inline-checkbox">
-            <input type="checkbox" name="webMinVPDMonitoring" id="webMinVPDMonitoring" %MINVPDMONITORING%>
-            <span data-i18n="runsetting.lowVPD.enabled">aktivieren</span>
-          </label>
-        </div>
-
-        <div class="form-group">
-          <label for="targetVPD" data-i18n="runsetting.targetVPD">Soll-VPD:</label>
-          <input name="webTargetVPD" id="webTargetVPD" style="width: 65px;" type="number" step="0.01" min="0.50" max="3.50" value="%TARGETVPD%">&nbsp;kPa
-        </div>
-
-        <div class="form-group">
-          <label for="minVPD" data-i18n="runsetting.minVPD">Offset Min-VPD:</label>
-          <input name="webMinVPD" id="webMinVPD" style="width: 65px;" type="number" step="0.01" min="0.00" max="0.30" value="%MINVPD%">&nbsp;kPa
-        </div>
-
-        <div class="form-group">
-          <label for="hysteresis" data-i18n="runsetting.hysteresis">Hysterese:</label>
-          <input name="webHysteresis" id="webHysteresis" style="width: 65px;" type="number" step="0.01" min="0.00" max="0.1" value="%VPDHYSTERESIS%">&nbsp;kPa
+          <button type="button" class="primary runsettings-energy-reset" id="saverunsettingsBtn" data-i18n="runsetting.resetkWh" onclick="resetShellyEnergy(this)">Reset Shelly kWh</button>
         </div>
       </div>
 
-      <div class="tile-row relay-extra" id="irrigationSettingsSection" style="display:none;">
-        <h2 data-i18n="runsetting.wateringSettings">Bewässerungseinstellung</h2>
-
-        <div class="form-group">
-          <label for="timePerTask" data-i18n="runsetting.timePerTask">Bewässerungszeit pro Task:</label>
-          <input name="webTimePerTask" id="webTimePerTask" style="width: 65px;" type="number" step="1" min="1" max="10" value="%TIMEPERTASK%">&nbsp;s&nbsp;(min 1s, max 10s, step 1s)
+      <div class="runsettings-top-grid">
+        <div class="runsettings-panel">
+          <h2 class="runsettings-panel-title" data-i18n="runsetting.section.growPhase">Grow-Zeiträume</h2>
+          <div class="runsettings-fields runsettings-grow-fields">
+            <div class="runsettings-field">
+              <label for="webGrowStart" data-i18n="runsetting.startGrow">Start Grow Date:</label>
+              <input id="webGrowStart" name="webGrowStart" type="date" value="%GROWSTARTDATE%">
+            </div>
+            <div class="runsettings-field">
+              <label for="webFloweringStart" data-i18n="runsetting.startFlower">Start Flowering Date:</label>
+              <input id="webFloweringStart" name="webFloweringStart" type="date" value="%GROWFLOWERDATE%">
+            </div>
+            <div class="runsettings-field runsettings-field-span-2">
+              <label for="webDryingStart" data-i18n="runsetting.startDry">Start Drying Date:</label>
+              <input id="webDryingStart" name="webDryingStart" type="date" value="%GROWDRAYINGDATE%">
+            </div>
+          </div>
         </div>
 
-        <div class="form-group">
-          <label for="betweenTasks" data-i18n="runsetting.betweenTasks">Pause zwischen Bewässerungen:</label>
-          <input name="webBetweenTasks" id="webBetweenTasks" style="width: 65px;" type="number" step="1" min="1" max="10" value="%BETWEENTASKS%">&nbsp;Min&nbsp;(min 1Min, max 10Min, step 1Min)
+        <div class="runsettings-panel">
+          <h2 class="runsettings-panel-title" data-i18n="runsetting.section.temperature">Temperatur</h2>
+          <div class="runsettings-fields">
+            <div class="runsettings-field runsettings-field-unit">
+              <label for="webTargetTemp" data-i18n="runsetting.targetTemp">Soll-Temperatur:</label>
+              <div class="runsettings-control-unit">
+                <input name="webTargetTemp" id="webTargetTemp" type="number" step="0.1" min="18" max="30" value="%TARGETTEMPERATURE%" data-celsius-value="%TARGETTEMPERATURE%">
+                <span class="unit" data-temp-unit-label>°C</span>
+              </div>
+            </div>
+            <div class="runsettings-field runsettings-field-unit">
+              <label for="webOffsetLeafTemp" data-i18n="runsetting.offsetLeafTemperature">Offset Blatttemperatur:</label>
+              <div class="runsettings-control-unit">
+                <input name="webOffsetLeafTemp" id="webOffsetLeafTemp" type="number" step="0.1" min="-3.0" max="0.0" value="%LEAFTEMPERATURE%" data-celsius-value="%LEAFTEMPERATURE%">
+                <span class="unit" data-temp-unit-label>°C</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div class="form-group">
-          <label for="amountOfWater" data-i18n="runsetting.amountOfWater">Wassermenge nach 10 Sekunden:</label>
-          <input name="webAmountOfWater" id="webAmountOfWater" style="width: 65px;" type="number" step="5" min="10" max="500" value="%AMOUNTOFWATER%">&nbsp;ml&nbsp;(min 10ml, max 500ml, step 5ml)
+        <div class="runsettings-panel" id="vpdSettingsSection">
+          <h2 class="runsettings-panel-title" data-i18n="runsetting.vpdSettings">VPD-Einstellungen</h2>
+          <div class="runsettings-vpd-enable">
+            <label class="inline-checkbox">
+              <input type="checkbox" name="webMinVPDMonitoring" id="webMinVPDMonitoring" %MINVPDMONITORING%>
+              <span data-i18n="runsetting.lowVPD.enabled">aktivieren</span>
+            </label>
+          </div>
+          <div class="runsettings-compact-grid runsettings-vpd-grid">
+            <div class="runsettings-field runsettings-field-unit">
+              <label for="webTargetVPD" data-i18n="runsetting.targetVPD">Soll-VPD:</label>
+              <div class="runsettings-control-unit">
+                <input name="webTargetVPD" id="webTargetVPD" type="number" step="0.01" min="0.50" max="3.50" value="%TARGETVPD%">
+                <span>kPa</span>
+              </div>
+            </div>
+            <div class="runsettings-field runsettings-field-unit">
+              <label for="webMinVPD" data-i18n="runsetting.minVPD">Offset Min-VPD:</label>
+              <div class="runsettings-control-unit">
+                <input name="webMinVPD" id="webMinVPD" type="number" step="0.01" min="0.00" max="0.30" value="%MINVPD%">
+                <span>kPa</span>
+              </div>
+            </div>
+            <div class="runsettings-field runsettings-field-unit">
+              <label for="webHysteresis" data-i18n="runsetting.hysteresis">Hysterese:</label>
+              <div class="runsettings-control-unit">
+                <input name="webHysteresis" id="webHysteresis" type="number" step="0.01" min="0.00" max="0.1" value="%VPDHYSTERESIS%">
+                <span>kPa</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div class="form-group">
-          <label for="Irrigation" data-i18n="runsetting.irrigation">Gesamte Bewässerungsmenge:</label>
-          <input name="webIrrigation" id="webIrrigation" style="width: 65px;" type="number" step="10" min="100" max="3000" value="%IRRIGATION%">&nbsp;ml&nbsp;(min 100ml, max 3000ml, step 10ml)
+      </div>
+
+      <div class="runsettings-operations-row">
+        <div class="runsettings-panel relay-extra runsettings-irrigation-settings-card" id="irrigationSettingsSection" style="display:none;">
+          <h2 class="runsettings-panel-title" data-i18n="runsetting.wateringSettings">Bewässerungseinstellung</h2>
+          <p class="hint runsettings-panel-hint" data-i18n="runsetting.pumpsHint">Aktivieren Sie nur die Pumpen für tatsächlich verwendete Töpfe.</p>
+          <div class="runsettings-irrigation-checks runsettings-irrigation-checks-stacked">
+            <div class="runsettings-pumps-box">
+              <label class="inline-checkbox">
+                <input type="checkbox" name="webPump1Enabled" id="webPump1Enabled" %PUMP1_ENABLED_CHECKED%>
+                <span data-i18n="runsetting.pump1Enabled">Pumpe 1 aktiv</span>
+              </label>
+              <label class="inline-checkbox">
+                <input type="checkbox" name="webPump2Enabled" id="webPump2Enabled" %PUMP2_ENABLED_CHECKED%>
+                <span data-i18n="runsetting.pump2Enabled">Pumpe 2 aktiv</span>
+              </label>
+              <label class="inline-checkbox">
+                <input type="checkbox" name="webPump3Enabled" id="webPump3Enabled" %PUMP3_ENABLED_CHECKED%>
+                <span data-i18n="runsetting.pump3Enabled">Pumpe 3 aktiv</span>
+              </label>
+            </div>
+            <div class="runsettings-flood-box">
+              <label class="inline-checkbox">
+                <input type="checkbox" name="webIrrigationStopOnFlood" id="webIrrigationStopOnFlood" %IRRIGATION_STOP_ON_FLOOD_CHECKED%>
+                <span data-i18n="runsetting.stopOnFloodAlarm">Aktive Bewässerung bei Flood-Alarm abbrechen</span>
+              </label>
+              <small data-i18n="runsetting.stopOnFloodAlarmHint">Wirkt nur bei aktiviertem Flood S Gen4 und einer laufenden automatischen Bewässerung.</small>
+            </div>
+          </div>
         </div>
 
-        <div class="form-group">
-          <label for="minTank">min. Tank:</label>
-          <input name="webMinTank" id="webMinTank" style="width: 65px;" type="number" value="%MINTANK%">&nbsp;cm
+        <div class="runsettings-panel runsettings-irrigation-params relay-extra" id="irrigationParameterSection" style="display:none;">
+          <h2 class="runsettings-panel-title" data-i18n="runsetting.irrigationParameters">Bewässerungsparameter</h2>
+          <div class="runsettings-param-grid runsettings-param-grid-inline">
+            <div class="runsettings-field runsettings-field-unit">
+              <label for="webTimePerTask" data-i18n="runsetting.timePerTask">Bewässerungszeit pro Task:</label>
+              <div class="runsettings-control-unit"><input name="webTimePerTask" id="webTimePerTask" type="number" step="1" min="1" max="10" value="%TIMEPERTASK%"><span>s</span></div>
+              <small>(min 1s, max 10s, step 1s)</small>
+            </div>
+            <div class="runsettings-field runsettings-field-unit">
+              <label for="webBetweenTasks" data-i18n="runsetting.betweenTasks">Pause zwischen Bewässerungen:</label>
+              <div class="runsettings-control-unit"><input name="webBetweenTasks" id="webBetweenTasks" type="number" step="1" min="1" max="10" value="%BETWEENTASKS%"><span>Min</span></div>
+              <small>(min 1Min, max 10Min, step 1Min)</small>
+            </div>
+            <div class="runsettings-field runsettings-field-unit">
+              <label for="webAmountOfWater" data-i18n="runsetting.amountOfWater">Wassermenge nach 10 Sekunden:</label>
+              <div class="runsettings-control-unit"><input name="webAmountOfWater" id="webAmountOfWater" type="number" step="5" min="10" max="500" value="%AMOUNTOFWATER%"><span>ml</span></div>
+              <small>(min 10ml, max 500ml, step 5ml)</small>
+            </div>
+            <div class="runsettings-field runsettings-field-unit">
+              <label for="webIrrigation" data-i18n="runsetting.irrigation">Gesamte Bewässerungsmenge:</label>
+              <div class="runsettings-control-unit"><input name="webIrrigation" id="webIrrigation" type="number" step="10" min="100" max="3000" value="%IRRIGATION%"><span>ml</span></div>
+              <small>(min 100ml, max 3000ml, step 10ml)</small>
+            </div>
+            <div class="runsettings-field runsettings-field-unit">
+              <label for="webMaxTank">0% Tank:</label>
+              <div class="runsettings-control-unit"><input name="webMaxTank" id="webMaxTank" type="number" value="%MAXTANK%"><span>cm</span></div>
+            </div>
+            <div class="runsettings-field runsettings-field-unit">
+              <label for="webMinTank">100% Tank:</label>
+              <div class="runsettings-control-unit"><input name="webMinTank" id="webMinTank" type="number" value="%MINTANK%"><span>cm</span></div>
+            </div>
+          </div>
         </div>
-      
-        <div class="form-group">
-          <label for="maxTank">max. Tank:</label>
-          <input name="webMaxTank" id="webMaxTank" style="width: 65px;" type="number" value="%MAXTANK%">&nbsp;cm
+
+        <div class="runsettings-panel runsettings-heating-panel">
+          <h2 class="runsettings-panel-title" data-i18n="runsetting.relayHeating">ESP32 Relay for heating</h2>
+          <p class="relay-heating-hint" data-i18n="runsetting.relay.heatingHint">Wird ein Relay für die Heizung verwendet, kann es hier konfigutiert werden.</p>
+          <div class="runsettings-heating-grid runsettings-heating-grid-stacked">
+            <div class="runsettings-field">
+              <label for="heatingSource" data-i18n="runsetting.relay.heatingSource">Heizungsquelle</label>
+              <select name="webHeatingSource" id="heatingSource">
+                <option value="0" %HEATSRC0_SEL%>Disabled</option>
+                <option value="1" %HEATSRC1_SEL%>ESP Relay</option>
+                <option value="2" %HEATSRC2_SEL%>Shelly Plug</option>
+              </select>
+            </div>
+            <div class="runsettings-field" id="heatingRelayRow">
+              <label for="heatingRelay" data-i18n="runsetting.relay.heatingRelay">Heizungs-Relay</label>
+              <select name="webHeatingRelay" id="heatingRelay">
+                <option value="" %HEATRELAY0_SEL% data-i18n="runsetting.relay.none">Keines</option>
+                <option value="4" %HEATRELAY4_SEL%>%RELAYNAMES4%</option>
+                <option value="5" %HEATRELAY5_SEL%>%RELAYNAMES5%</option>
+                <option value="6" %HEATRELAY6_SEL%>%RELAYNAMES6%</option>
+              </select>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="spacer"></div>
+      <div class="runsettings-panel runsettings-relay-panel relay-sched">
+        <h2 class="runsettings-panel-title" data-i18n="runsetting.relayScheduling">ESP32 Relay Scheduling</h2>
+        <p class="relay-sched-hint" data-i18n="runsetting.relay.minutesHint">Minutenformat: <b>0–59</b> (Minute innerhalb der Stunde).</p>
 
-      <!-- Heating Relay Selection -->
-      <div class="relay-heating">
-        <h2 class="relay-heating-title" data-i18n="runsetting.relayHeating">ESP32 Relay for heating</h2>
-        <p class="relay-heating-hint" data-i18n="runsetting.relay.heatingHint">
-          Wird ein Relay für die Heizung verwendet, kann es hier konfigutiert werden.
-        </p>
-
-        <div class="relay-heat-select">
-          <label for="heatingSource" data-i18n="runsetting.relay.heatingSource">Heizungsquelle</label>
-          <select name="webHeatingSource" id="heatingSource">
-            <option value="0" %HEATSRC0_SEL%>Disabled</option>
-            <option value="1" %HEATSRC1_SEL%>ESP Relay</option>
-            <option value="2" %HEATSRC2_SEL%>Shelly Plug</option>
-          </select>
-        </div>
-
-        <div class="relay-heat-select">
-          <label for="heatingRelay" data-i18n="runsetting.relay.heatingRelay">
-            Heizungs-Relay
-          </label>
-
-          <select name="webHeatingRelay" id="heatingRelay" name="heatingRelay">
-            <option value="" %HEATRELAY0_SEL% data-i18n="runsetting.relay.none">Keines</option>
-            <option value="4" %HEATRELAY4_SEL%>%RELAYNAMES4%</option>
-            <option value="5" %HEATRELAY5_SEL%>%RELAYNAMES5%</option>
-            <option value="6" %HEATRELAY6_SEL%>%RELAYNAMES6%</option>
-          </select>
-        </div>
-
-        <!-- ESP32 Relay Scheduling -->
-        <div class="relay-sched">
-          <h2 class="relay-sched-title" data-i18n="runsetting.relayScheduling">ESP32 Relay Scheduling</h2>
-          <p class="relay-sched-hint" data-i18n="runsetting.relay.minutesHint">
-            Minutenformat: <b>0–59</b> (Minute innerhalb der Stunde).
-          </p>
-
-          <div class="relay-sched-list">
-
-            <!-- ESP Relay 1 -->
-            <div class="relay-sched-row" id="espRelay1Row" style="display:none;">
-              <div class="relay-sched-name">
-                <div class="relay-sched-name-label" data-i18n="runsettings.espSchedRelay1">Relay</div>
-                <div class="relay-sched-name-value">%RELAYNAMES1%</div>
-              </div>
-
-              <div class="sched-field chk">
-                <label class="inline-checkbox">
-                  <input id="espRelay1Enabled" name="webEspRel1Enbl" type="checkbox" %ESPRELAY1_ENABLED_CHECKED%>
-                  <span data-i18n="runsetting.relay.enabledShort">Enabled</span>
-                </label>
-              </div>
-
-              <div class="sched-field chk">
-                <label class="inline-checkbox">
-                  <input id="espRelay1IfLightOff" name="webEspRel1ILOff" type="checkbox" %ESPRELAY1_IFLIGHTOFF_CHECKED%>
-                  <span data-i18n="runsetting.relay.ifLightOff">wenn Licht aus</span>
-                </label>
-              </div>
-
-              <div class="sched-field minute">
-                <label for="espRelay1OnMin" data-i18n="runsetting.relay.onMinute">Einschaltminute</label>
-                <input id="espRelay1OnMin" name="webEspRel1On" type="number" min="0" max="59" step="1" value="%ESPRELAY1_ONMIN%">
-              </div>
-
-              <div class="sched-field minute">
-                <label for="espRelay1OffMin" data-i18n="runsetting.relay.offMinute">Ausschaltminute</label>
-                <input id="espRelay1OffMin" name="webEspRel1Off" type="number" min="0" max="59" step="1" value="%ESPRELAY1_OFFMIN%">
-              </div>
-            </div>
-
-            <!-- ESP Relay 2 -->
-            <div class="relay-sched-row" id="espRelay2Row" style="display:none;">
-              <div class="relay-sched-name">
-                <div class="relay-sched-name-label" data-i18n="runsettings.espSchedRelay2">Relay</div>
-                <div class="relay-sched-name-value">%RELAYNAMES2%</div>
-              </div>
-
-              <div class="sched-field chk">
-                <label class="inline-checkbox">
-                  <input id="espRelay2Enabled" name="webEspRel2Enbl" type="checkbox" %ESPRELAY2_ENABLED_CHECKED%>
-                  <span data-i18n="runsetting.relay.enabledShort">Enabled</span>
-                </label>
-              </div>
-
-              <div class="sched-field chk">
-                <label class="inline-checkbox">
-                  <input id="espRelay2IfLightOff" name="webEspRel2ILOff" type="checkbox" %ESPRELAY2_IFLIGHTOFF_CHECKED%>
-                  <span data-i18n="runsetting.relay.ifLightOff">wenn Licht aus</span>
-                </label>
-              </div>
-
-              <div class="sched-field minute">
-                <label for="espRelay2OnMin" data-i18n="runsetting.relay.onMinute">Einschaltminute</label>
-                <input id="espRelay2OnMin" name="webEspRel2On" type="number" min="0" max="59" step="1" value="%ESPRELAY2_ONMIN%">
-              </div>
-
-              <div class="sched-field minute">
-                <label for="espRelay2OffMin" data-i18n="runsetting.relay.offMinute">Ausschaltminute</label>
-                <input id="espRelay2OffMin" name="webEspRel2Off" type="number" min="0" max="59" step="1" value="%ESPRELAY2_OFFMIN%">
-              </div>
-            </div>
-
-            <!-- ESP Relay 3 -->
-            <div class="relay-sched-row" id="espRelay3Row" style="display:none;">
-              <div class="relay-sched-name">
-                <div class="relay-sched-name-label" data-i18n="runsettings.espSchedRelay3">Relay</div>
-                <div class="relay-sched-name-value">%RELAYNAMES3%</div>
-              </div>
-
-              <div class="sched-field chk">
-                <label class="inline-checkbox">
-                  <input id="espRelay3Enabled" name="webEspRel3Enbl" type="checkbox" %ESPRELAY3_ENABLED_CHECKED%>
-                  <span data-i18n="runsetting.relay.enabledShort">Enabled</span>
-                </label>
-              </div>
-
-              <div class="sched-field chk">
-                <label class="inline-checkbox">
-                  <input id="espRelay3IfLightOff" name="webEspRel3ILOff" type="checkbox" %ESPRELAY3_IFLIGHTOFF_CHECKED%>
-                  <span data-i18n="runsetting.relay.ifLightOff">wenn Licht aus</span>
-                </label>
-              </div>
-
-              <div class="sched-field minute">
-                <label for="espRelay3OnMin" data-i18n="runsetting.relay.onMinute">Einschaltminute</label>
-                <input id="espRelay3OnMin" name="webEspRel3On" type="number" min="0" max="59" step="1" value="%ESPRELAY3_ONMIN%">
-              </div>
-
-              <div class="sched-field minute">
-                <label for="espRelay3OffMin" data-i18n="runsetting.relay.offMinute">Ausschaltminute</label>
-                <input id="espRelay3OffMin" name="webEspRel3Off" type="number" min="0" max="59" step="1" value="%ESPRELAY3_OFFMIN%">
-              </div>
-            </div>
-
-            <!-- ESP Relay 4 -->
-            <div class="relay-sched-row" id="espRelay4Row">
-              <div class="relay-sched-name">
-                <div class="relay-sched-name-label" data-i18n="runsettings.espSchedRelay4">Relay</div>
-                <div class="relay-sched-name-value">%RELAYNAMES4%</div>
-              </div>
-
-              <div class="sched-field chk">
-                <label class="inline-checkbox">
-                  <input id="espRelay4Enabled" name="webEspRel4Enbl" type="checkbox" %ESPRELAY4_ENABLED_CHECKED%>
-                  <span data-i18n="runsetting.relay.enabledShort">Enabled</span>
-                </label>
-              </div>
-
-              <div class="sched-field chk">
-                <label class="inline-checkbox">
-                  <input id="espRelay4IfLightOff" name="webEspRel4ILOff" type="checkbox" %ESPRELAY4_IFLIGHTOFF_CHECKED%>
-                  <span data-i18n="runsetting.relay.ifLightOff">wenn Licht aus</span>
-                </label>
-              </div>
-
-              <div class="sched-field minute">
-                <label for="espRelay4OnMin" data-i18n="runsetting.relay.onMinute">Einschaltminute</label>
-                <input id="espRelay4OnMin" name="webEspRel4On" type="number" min="0" max="59" step="1" value="%ESPRELAY4_ONMIN%">
-              </div>
-
-              <div class="sched-field minute">
-                <label for="espRelay4OffMin" data-i18n="runsetting.relay.offMinute">Ausschaltminute</label>
-                <input id="espRelay4OffMin" name="webEspRel4Off" type="number" min="0" max="59" step="1" value="%ESPRELAY4_OFFMIN%">
-              </div>
-            </div>
-      
-            <!-- ESP Relay 5 -->
-            <div class="relay-sched-row relay-extra" id="espRelay5Row">
-                <div class="relay-sched-name">
-                    <div class="relay-sched-name-label" data-i18n="runsettings.espSchedRelay5">Relay</div>
-                    <div class="relay-sched-name-value">%RELAYNAMES5%</div>
-                </div>
-
-                <div class="sched-field chk">
-                    <label class="inline-checkbox">
-                        <input id="espRelay5Enabled" name="webEspRel5Enbl" type="checkbox" %ESPRELAY5_ENABLED_CHECKED%>
-                        <span data-i18n="runsetting.relay.enabledShort">Enabled</span>
-                    </label>
-                </div>
-
-                <div class="sched-field chk">
-                    <label class="inline-checkbox">
-                        <input id="espRelay5IfLightOff" name="webEspRel5ILOff" type="checkbox" %ESPRELAY5_IFLIGHTOFF_CHECKED%>
-                        <span data-i18n="runsetting.relay.ifLightOff">wenn Licht aus</span>
-                    </label>
-                </div>
-
-                <div class="sched-field minute">
-                    <label for="espRelay5OnMin" data-i18n="runsetting.relay.onMinute">Einschaltminute</label>
-                    <input id="espRelay5OnMin" name="webEspRel5On" type="number" min="0" max="59" step="1" value="%ESPRELAY5_ONMIN%">
-                </div>
-
-                <div class="sched-field minute">
-                    <label for="espRelay5OffMin" data-i18n="runsetting.relay.offMinute">Ausschaltminute</label>
-                    <input id="espRelay5OffMin" name="webEspRel5Off" type="number" min="0" max="59" step="1" value="%ESPRELAY5_OFFMIN%">
-                </div>
+        <div class="runsettings-relay-table-wrap">
+          <div class="runsettings-relay-table relay-sched-list">
+            <div class="runsettings-relay-head">
+              <div>#</div>
+              <div data-i18n="runsetting.relay.name">Bezeichnung</div>
+              <div data-i18n="runsetting.relay.enabledShort">Aktiv</div>
+              <div data-i18n="runsetting.relay.ifLightOff">auch wenn Licht aus</div>
+              <div data-i18n="runsetting.relay.onMinute">Einschaltminute</div>
+              <div data-i18n="runsetting.relay.offMinute">Ausschaltminute</div>
             </div>
 
 
-            <!-- ESP Relay 6 -->
-            <div class="relay-sched-row relay-extra" id="espRelay6Row">
-                <div class="relay-sched-name">
-                    <div class="relay-sched-name-label" data-i18n="runsettings.espSchedRelay6">Relay</div>
-                    <div class="relay-sched-name-value">%RELAYNAMES6%</div>
-                </div>
 
-                <div class="sched-field chk">
-                    <label class="inline-checkbox">
-                        <input id="espRelay6Enabled" name="webEspRel6Enbl" type="checkbox" %ESPRELAY6_ENABLED_CHECKED%>
-                        <span data-i18n="runsetting.relay.enabledShort">Enabled</span>
-                    </label>
-                </div>
 
-                <div class="sched-field chk">
-                    <label class="inline-checkbox">
-                        <input id="espRelay6IfLightOff" name="webEspRel6ILOff" type="checkbox" %ESPRELAY6_IFLIGHTOFF_CHECKED%>
-                        <span data-i18n="runsetting.relay.ifLightOff">wenn Licht aus</span>
-                    </label>
-                </div>
 
-                <div class="sched-field minute">
-                    <label for="espRelay6OnMin" data-i18n="runsetting.relay.onMinute">Einschaltminute</label>
-                    <input id="espRelay6OnMin" name="webEspRel6On" type="number" min="0" max="59" step="1" value="%ESPRELAY6_ONMIN%">
-                </div>
 
-                <div class="sched-field minute">
-                    <label for="espRelay6OffMin" data-i18n="runsetting.relay.offMinute">Ausschaltminute</label>
-                    <input id="espRelay6OffMin" name="webEspRel6Off" type="number" min="0" max="59" step="1" value="%ESPRELAY6_OFFMIN%">
-                </div>
+
+            <div class="relay-sched-row runsettings-relay-row" id="espRelay4Row">
+              <div class="runsettings-relay-number">4</div>
+              <div class="relay-sched-name"><div class="relay-sched-name-label" data-i18n="runsettings.espSchedRelay4">Relay</div><div class="relay-sched-name-value">%RELAYNAMES4%</div></div>
+              <div class="sched-field chk"><label class="inline-checkbox"><input id="espRelay4Enabled" name="webEspRel4Enbl" type="checkbox" %ESPRELAY4_ENABLED_CHECKED%><span data-i18n="runsetting.relay.enabledShort">Enabled</span></label></div>
+              <div class="sched-field chk"><label class="inline-checkbox"><input id="espRelay4IfLightOff" name="webEspRel4ILOff" type="checkbox" %ESPRELAY4_IFLIGHTOFF_CHECKED%><span data-i18n="runsetting.relay.ifLightOff">wenn Licht aus</span></label></div>
+              <div class="sched-field minute"><label for="espRelay4OnMin" data-i18n="runsetting.relay.onMinute">Einschaltminute</label><input id="espRelay4OnMin" name="webEspRel4On" type="number" min="0" max="59" step="1" value="%ESPRELAY4_ONMIN%"></div>
+              <div class="sched-field minute"><label for="espRelay4OffMin" data-i18n="runsetting.relay.offMinute">Ausschaltminute</label><input id="espRelay4OffMin" name="webEspRel4Off" type="number" min="0" max="59" step="1" value="%ESPRELAY4_OFFMIN%"></div>
             </div>
 
-          <div class="relay-sched-actions">
-            <button type="button" class="primary" data-i18n="settings.save" onclick="saveRunsettingsAll()">speichern</button>
+            <div class="relay-sched-row runsettings-relay-row relay-extra" id="espRelay5Row" style="display:none;">
+              <div class="runsettings-relay-number">5</div>
+              <div class="relay-sched-name"><div class="relay-sched-name-label" data-i18n="runsettings.espSchedRelay5">Relay</div><div class="relay-sched-name-value">%RELAYNAMES5%</div></div>
+              <div class="sched-field chk"><label class="inline-checkbox"><input id="espRelay5Enabled" name="webEspRel5Enbl" type="checkbox" %ESPRELAY5_ENABLED_CHECKED%><span data-i18n="runsetting.relay.enabledShort">Enabled</span></label></div>
+              <div class="sched-field chk"><label class="inline-checkbox"><input id="espRelay5IfLightOff" name="webEspRel5ILOff" type="checkbox" %ESPRELAY5_IFLIGHTOFF_CHECKED%><span data-i18n="runsetting.relay.ifLightOff">wenn Licht aus</span></label></div>
+              <div class="sched-field minute"><label for="espRelay5OnMin" data-i18n="runsetting.relay.onMinute">Einschaltminute</label><input id="espRelay5OnMin" name="webEspRel5On" type="number" min="0" max="59" step="1" value="%ESPRELAY5_ONMIN%"></div>
+              <div class="sched-field minute"><label for="espRelay5OffMin" data-i18n="runsetting.relay.offMinute">Ausschaltminute</label><input id="espRelay5OffMin" name="webEspRel5Off" type="number" min="0" max="59" step="1" value="%ESPRELAY5_OFFMIN%"></div>
+            </div><div class="relay-sched-row runsettings-relay-row relay-extra" id="espRelay6Row" style="display:none;">
+              <div class="runsettings-relay-number">6</div>
+              <div class="relay-sched-name"><div class="relay-sched-name-label" data-i18n="runsettings.espSchedRelay6">Relay</div><div class="relay-sched-name-value">%RELAYNAMES6%</div></div>
+              <div class="sched-field chk"><label class="inline-checkbox"><input id="espRelay6Enabled" name="webEspRel6Enbl" type="checkbox" %ESPRELAY6_ENABLED_CHECKED%><span data-i18n="runsetting.relay.enabledShort">Enabled</span></label></div>
+              <div class="sched-field chk"><label class="inline-checkbox"><input id="espRelay6IfLightOff" name="webEspRel6ILOff" type="checkbox" %ESPRELAY6_IFLIGHTOFF_CHECKED%><span data-i18n="runsetting.relay.ifLightOff">wenn Licht aus</span></label></div>
+              <div class="sched-field minute"><label for="espRelay6OnMin" data-i18n="runsetting.relay.onMinute">Einschaltminute</label><input id="espRelay6OnMin" name="webEspRel6On" type="number" min="0" max="59" step="1" value="%ESPRELAY6_ONMIN%"></div>
+              <div class="sched-field minute"><label for="espRelay6OffMin" data-i18n="runsetting.relay.offMinute">Ausschaltminute</label><input id="espRelay6OffMin" name="webEspRel6Off" type="number" min="0" max="59" step="1" value="%ESPRELAY6_OFFMIN%"></div>
+            </div>
           </div>
-          
         </div>
+      </div>
 
-    </section> 
-    </form>
+      <div class="runsettings-actions">
+        <button type="button" class="primary" data-i18n="settings.save" onclick="saveRunsettingsAll()">Speichern</button>
+      </div>
+    </section>
 
     <!-- runsettings section -->
-    <form action="/savemessagesettings" method="POST">
+    <form action="/savemessagesettings" method="POST" id="messageSettingsForm">
     <section id="message" class="page card">
       <h1 data-i18n="message.title">Nachrichteneinstellungen</h1>
 
@@ -792,12 +708,12 @@ const char* htmlPage = R"rawliteral(
 
       <div class="form-group">
         <label for="webPushoverUserKey" data-i18n="message.pushoverUserKey">Pushover Benutzer:</label>
-        <input name="webPushoverUserKey" id="webPushoverUserKey" type="text" data-i18n="message.pushoverUserKey.ph" data-i18n-attr="placeholder" style="width: 320px;" value="%PUSHOVERUSERKEY%">
+        <input name="webPushoverUserKey" id="webPushoverUserKey" type="password" autocomplete="new-password" data-i18n="message.pushoverUserKey.ph" data-i18n-attr="placeholder" style="width: 320px;" value="%PUSHOVERUSERKEY%">
       </div>
 
       <div class="form-group">
         <label for="webPushoverAppKey" data-i18n="message.pushoverAppKey">Pushover Token:</label>
-        <input name="webPushoverAppKey" id="webPushoverAppKey" type="text" data-i18n="message.pushoverAppKey.ph" data-i18n-attr="placeholder" style="width: 320px;" value="%PUSHOVERAPPKEY%">
+        <input name="webPushoverAppKey" id="webPushoverAppKey" type="password" autocomplete="new-password" data-i18n="message.pushoverAppKey.ph" data-i18n-attr="placeholder" style="width: 320px;" value="%PUSHOVERAPPKEY%">
       </div>
 
       <div class="form-group">
@@ -821,7 +737,7 @@ const char* htmlPage = R"rawliteral(
 
       <div class="form-group">
         <label for="webGotifyToken" data-i18n="message.gotifyToken">Gotify Token:</label>
-        <input name="webGotifyToken" id="webGotifyToken" type="text" data-i18n="message.gotifyToken.ph" data-i18n-attr="placeholder" style="width: 320px;" value="%GOTIFYTOKEN%">
+        <input name="webGotifyToken" id="webGotifyToken" type="password" autocomplete="new-password" data-i18n="message.gotifyToken.ph" data-i18n-attr="placeholder" style="width: 320px;" value="%GOTIFYTOKEN%">
       </div>
 
       <button class="primary" id="saveMessageBtn" data-i18n="settings.save">Speichern</button>
@@ -829,7 +745,7 @@ const char* htmlPage = R"rawliteral(
     </form>
 
     <!-- setting section -->
-    <form action="/savesettings" method="POST">
+    <form id="systemSettingsForm" onsubmit="event.preventDefault(); window.saveSystemSettingsAll(event); return false;">
       <section id="settings" class="page card">
         <h1 data-i18n="settings.title">Systemeinstellungen</h1>
 
@@ -843,8 +759,7 @@ const char* htmlPage = R"rawliteral(
         <div class="form-group">
           <label for="webRelayCount" data-i18n="settings.relayBoard">welches Relay-Board?</label>
           <select name="webRelayCount" id="webRelayCount" class="control-sm shelly-other">
-            <option value="4" %RELAYCOUNT4_SEL%>4x</option>
-            <option value="6" %RELAYCOUNT6_SEL%>ESP32-S3-Relay-6Ch</option>
+            <option value="6" selected>ESP32-S3 · 6x</option>
           </select>
         </div>
 
@@ -905,13 +820,38 @@ const char* htmlPage = R"rawliteral(
           </select>
         </div>
 
-        <h2 data-i18n="settings.powerPrice">Preis pro kWh</h2> 
+        <h2 data-i18n="settings.backendWrite.title">Backend Write API</h2>
+        <p class="hint" data-i18n="settings.backendWrite.hint">Erlaubt dem GrowTent-Backend ausschließlich Soll-Temperatur, Soll-VPD, Blüte-/Trocknungsdatum und aktuelle Phase über eine HMAC-gesicherte Schnittstelle zu ändern.</p>
+
+        <div class="form-group checkbox">
+          <label class="inline-checkbox">
+            <input type="checkbox" name="webBackendWriteEnabled" id="webBackendWriteEnabled" %BACKEND_WRITE_ENABLED_CHECKED%>
+            <span data-i18n="settings.backendWrite.enabled">Backend Write API aktivieren</span>
+          </label>
+        </div>
+
+        <div class="form-group">
+          <label for="webBackendWriteAllowedIp" data-i18n="settings.backendWrite.allowedIp">Erlaubte Backend-IP:</label>
+          <input name="webBackendWriteAllowedIp" id="webBackendWriteAllowedIp" type="text" inputmode="decimal" maxlength="15" style="width: 180px;" value="%BACKEND_WRITE_ALLOWED_IP%" placeholder="192.168.178.10">
+        </div>
+
+        <div class="form-group">
+          <label for="webBackendWriteSecret" data-i18n="settings.backendWrite.secret">HMAC API-Schlüssel:</label>
+          <input name="webBackendWriteSecret" id="webBackendWriteSecret" type="password" autocomplete="new-password" maxlength="64" style="width: 520px; max-width: 100%;" value="" placeholder="%BACKEND_WRITE_SECRET_PLACEHOLDER%">
+          <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+            <button type="button" class="btn" id="generateBackendWriteSecretBtn" data-i18n="settings.backendWrite.generate">Neuen 256-Bit-Schlüssel erzeugen</button>
+            <button type="button" class="btn" id="copyBackendWriteSecretBtn" data-i18n="settings.backendWrite.copy">Schlüssel kopieren</button>
+          </div>
+          <small data-i18n="settings.backendWrite.secretHint">Der Schlüssel wird nach dem Speichern nicht wieder angezeigt. Leeres Feld bedeutet: vorhandenen Schlüssel behalten.</small>
+        </div>
+
+        <h2 data-i18n="settings.powerPrice">Preis pro kWh</h2>
         <div class="form-group">
           <label for="webPowerPriceKwh">Power price (€/kWh):</label>
           <input name="webPowerPriceKwh" id="webPowerPriceKwh" type="number" step="0.01" min="0" style="width: 120px;" value="%POWERPRICEKWH%">
         </div>
 
-        <h2 data-i18n="settings.DS18B20">DS18B20 Sensor</h2>        
+        <h2 data-i18n="settings.DS18B20">DS18B20 Sensor</h2>
         <div class="form-group checkbox">
           <label class="inline-checkbox">
            <input type="checkbox" name="webDS18B20Enable" id="webDS18B20Enable" %DS18B20ENABLE%>
@@ -924,9 +864,11 @@ const char* htmlPage = R"rawliteral(
         </div>
 
         <h2 data-i18n="settings.relaySettings">Relais Einstellungen</h2>
-        <p class="hint" data-i18n="settings.fixedPumpRelayNamesHint">
-          Relay 1–3 are fixed pump outputs and cannot be renamed.
-        </p>
+
+
+
+
+
 
         <div class="form-group">
           <label for="webRelay4" data-i18n="settings.relay4">Relay 4:</label>
@@ -936,14 +878,12 @@ const char* htmlPage = R"rawliteral(
         <div class="form-group relay-extra" id="settingsRelay5Row" style="display:none;">
           <label for="webRelayName5" data-i18n="settings.relay5">Relay 5:</label>
           <input name="webRelayName5" id="webRelayName5" type="text" data-i18n="settings.relay5.ph" data-i18n-attr="placeholder" style="width: 120px;" maxlength="15" value="%RELAYNAMES5%">
-        </div>
-
-        <div class="form-group relay-extra" id="settingsRelay6Row" style="display:none;">
+        </div><div class="form-group relay-extra" id="settingsRelay6Row" style="display:none;">
           <label for="webRelayName6" data-i18n="settings.relay6">Relay 6:</label>
-          <input name="webRelayName6" id="webRelayName6" type="text" data-i18n="settings.relay6.ph" data-i18n-attr="placeholder" style="width: 120px;" maxlength="15" value="%RELAYNAMES6%">
+          <input name="webRelayName6" id="webRelayName6" type="text" data-i18n="settings.relay6.ph" data-i18n-attr="placeholder" style="width: 120px;" maxlength="16" value="%RELAYNAMES6%">
         </div>
 
-        <button class="primary" id="saveSettingsBtn" data-i18n="settings.save">Speichern</button>
+        <button class="primary" id="saveSettingsBtn" type="button" data-i18n="settings.save" onclick="window.saveSystemSettingsAll(event)">Speichern</button>
       </section>
     </form>
 
@@ -992,18 +932,27 @@ const char* htmlPage = R"rawliteral(
     <section id="ota" class="page card">
       <h1 data-i18n="ota.title">OTA Update</h1>
       <p class="hint">
-        Firmware-Quelle:
-        <code>https://github.com/syschelle/GrowTent-S3/releases/latest/download/firmware.bin</code>
+        <span data-i18n="ota.source">Firmware-Quelle:</span>
+        <code>https://github.com/syschelle/GrowTent/releases/latest/download/firmware.bin</code>
       </p>
 
-      <div id="otaStatus" class="muted">Noch nicht geprüft.</div>
+      <div id="otaStatus" class="muted" data-i18n="ota.notChecked">Noch nicht geprüft.</div>
       <div id="otaVersion"></div>
       <pre id="otaChangelog" style="white-space:pre-wrap;"></pre>
 
+      <div id="otaProgressPanel" class="ota-progress hidden" aria-live="polite">
+        <div class="ota-progress-head">
+          <span id="otaProgressLabel">OTA Update</span>
+          <strong id="otaProgressPercent">0%</strong>
+        </div>
+        <progress id="otaProgressBar" max="100" value="0">0%</progress>
+        <div id="otaProgressDetail" class="muted" data-i18n="ota.ready">Bereit.</div>
+      </div>
+
       <div class="spacer"></div>
-        <button type="button" class="primary" onclick="checkForOtaUpdate()">Auf Update prüfen</button>
+        <button type="button" class="primary" id="otaCheckBtn" data-i18n="ota.checkButton">Auf Update prüfen</button>
       <div class="spacer"></div>
-        <button type="button" class="primary" id="otaInstallBtn" onclick="startOtaUpdate()" disabled>Update installieren</button>
+        <button type="button" class="primary" id="otaInstallBtn" data-i18n="ota.installButton" disabled>Update installieren</button>
     </section>
 
     <!-- factory reset section -->
@@ -1016,55 +965,8 @@ const char* htmlPage = R"rawliteral(
     </section>
   </main>
   </div>
-  
- <script src="/script.js"></script>
-</body>
-</html>
-)rawliteral";
 
-const char* apPage = R"rawliteral(
-<!DOCTYPE html>
-<html>
-<head>
-  <title>%CONTENTCONTROLLERNAME%</title>
-  <meta charset="UTF-8">
-  <link rel="stylesheet" href="/style.css">
-</head>
-<body>
-  <header class="header">
-    <button class="hamburger" id="hamburgerBtn" data-i18n="a11y.menu" data-i18n-attr="aria-label" aria-label="Menü öffnen/schließen" aria-expanded="false" aria-controls="sidebar">☰</button>
-    <div class="title" data-i18n="app.title">%CONTENTCONTROLLERNAME%</div>
-    </div>
-  </header>
-  <div class="layout">
-    <nav class="sidebar" id="sidebar">
-      <a class="navlink" data-page="settings"   data-i18n="nav.wifisettings">WIFI Setting</a>
-    </nav>
-
-  <div class="overlay" id="overlay"></div>
-
-    <main class="content" id="content">
-      <section id="status" class="page active card">
-        <form action="/save" method="post">
-          <h1 data-i18n="settings.title">WIFI Setting</h1>
-          <label for="ssid">WIFI SSID:</label>
-          <input type="text" id="ssid" name="ssid" required><br><br>
-          <label for="password">WIFI Passwort:</label>
-          <input type="password" id="password" name="password" required><br><br>
-          <button class="primary" id="saveBtn" data-i18n="settings.save">save & reboot</button>
-        </form>
-      </section>
-      <section id="status" class="page active card">
-        <form action="/factory-reset" method="post" id="factoryResetForm">
-          <h1 data-i18n="settings.title">Factory Reset</h1>
-          <input type="hidden" name="confirm" value="1">
-          <button class="primary" id="factoryResetBtn" type="submit" data-i18n="settings.factoryreset.button">factory reset</button>
-        </form>
-      </section>
-    </main>
-  </div>
-  
- <script src="/script.js"></script>
+ <script src="/script.js?v=0.5.3"></script>
 </body>
 </html>
 )rawliteral";

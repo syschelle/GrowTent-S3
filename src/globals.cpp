@@ -35,12 +35,21 @@ const char* KEY_TARGETVPD = "targetVPD";
 const char* KEY_MINVPD = "minVPD";
 const char* KEY_MINVPD_MON = "minVPDMon";
 const char* KEY_HYSTERESIS = "vpdHysteresis";
+// Backend write API configuration. NVS key names stay below 15 characters.
+const char* KEY_BACKEND_WRITE_ENABLED = "beWrEn";
+const char* KEY_BACKEND_WRITE_IP = "beWrIp";
+const char* KEY_BACKEND_WRITE_SECRET = "beWrKey";
 const char* KEY_LIGHT_ON_TIME = "lightOnTime";
 const char* KEY_LIGHT_DAY_HOURS = "lightDayHours";
 const char* KEY_LIGHT_OFF_TIME = "lightOffTime";
 
-// heating relay key
+// Heating control keys. NVS keys stay below the ESP32 Preferences
+// 15-character key limit.
 const char* KEY_HEATING_RELAY = "heatingRelay";
+const char* KEY_HEAT_HYSTERESIS = "heatHyst";
+const char* KEY_HEAT_PREDICT = "heatPredict";
+const char* KEY_HEAT_MIN_ON = "heatMinOn";
+const char* KEY_HEAT_MIN_OFF = "heatMinOff";
 
 const char* KEY_RELAYCOUNT = "relayCount";
 
@@ -56,7 +65,7 @@ const char* KEY_RELAY_END_4   = "relay_end_4";
 const char* KEY_RELAY_START_5 = "relay_start_5";
 const char* KEY_RELAY_END_5   = "relay_end_5";
 const char* KEY_RELAY_START_6 = "relay_start_6";
-const char* KEY_RELAY_END_6   = "relay_end_6";
+const char* KEY_RELAY_END_6 = "relay_end_6";
 
 // Shelly device keys
 const char* KEY_SHELLYMAINIP = "shMainIP";
@@ -77,10 +86,21 @@ const char* KEY_SHELLYFANOFF = "shFanOff";
 const char* KEY_SHELLYEXHAUSTIP = "shExhaustIP";
 const char* KEY_SHELLYEXHAUSTGEN = "shExhaustGen";
 const char* KEY_SHELLYEXHAUSTOFF = "shExhaustOff";
+const char* KEY_SHELLYHEATMATIP = "shHeatMatIP";
+const char* KEY_SHELLYHEATMATGEN = "shHeatMatGen";
+const char* KEY_SHELLYHEATMATOFF = "shHeatMatOff";
 
 
 const char* KEY_SHELLYUSERNAME = "shUser";
 const char* KEY_SHELLYPASSWORD = "shPass";
+
+// Flood S Gen4 webhook settings/state. No Flood IP is stored or exposed.
+const char* KEY_FLOOD_ENABLED = "floodEnabled";
+const char* KEY_FLOOD_TOKEN = "floodToken";
+const char* KEY_FLOOD_KNOWN = "floodKnown";
+const char* KEY_FLOOD_ALARM = "floodAlarm";
+const char* KEY_FLOOD_BATTERY = "floodBattery";
+const char* KEY_FLOOD_LAST_SEEN = "floodLastSeen";
 
 // Irrigation keys
 const char* KEY_TIMEPERTASK = "timePerTask";
@@ -89,6 +109,10 @@ const char* KEY_AMOUNTOFWATER = "amountOfWater";
 const char* KEY_IRRIGATION = "amount";
 const char* KEY_MINTANK = "minTank";
 const char* KEY_MAXTANK = "maxTank";
+const char* KEY_PUMP1_ENABLED = "pump1Enabled";
+const char* KEY_PUMP2_ENABLED = "pump2Enabled";
+const char* KEY_PUMP3_ENABLED = "pump3Enabled";
+const char* KEY_IRRIGATION_STOP_ON_FLOOD = "irrStopFlood";
 
 // UI/settings keys
 const char* KEY_NAME   = "boxName";
@@ -120,6 +144,7 @@ const char* KEY_GOTIFYTOKEN = "gotifyToken";
 
 // Global variables
 bool debugLog;
+FloodState floodState;
 
 // NTP/time globals
 int lastSyncDay = -1;
@@ -139,13 +164,10 @@ String unit = "metric";
 String timeFormat = "24h";
 bool espMode = false;
 
-// Relay scheduling arrays and relay names used by legacy UI code.
-const char* const FIXED_PUMP_RELAY_NAMES[PUMP_RELAY_COUNT] = {
-  "Pump 1",
-  "Pump 2",
-  "Pump 3"
-};
-
+// Relay scheduling arrays + relay names (legacy)
+bool relaySchedulesEnabled[NUM_RELAYS] = {false};
+int  relaySchedulesStart[NUM_RELAYS] = {0};
+int  relaySchedulesEnd[NUM_RELAYS] = {0};
 String defaultControlRelayName(int relayNumber) {
   return "Relay " + String(relayNumber);
 }
@@ -161,7 +183,7 @@ String normalizeControlRelayName(const String& candidate, int relayNumber) {
 
   // Relay 4..6 used to be the three pump outputs. Replace only those old
   // default names; all other user-defined names remain untouched.
-  const int legacyPumpNumber = relayNumber - CONTROL_RELAY_FIRST + 1;
+  const int legacyPumpNumber = relayNumber - 4 + 1;
   String compact = cleaned;
   compact.toLowerCase();
   compact.replace(" ", "");
@@ -177,22 +199,13 @@ String normalizeControlRelayName(const String& candidate, int relayNumber) {
   return cleaned;
 }
 
-bool relaySchedulesEnabled[NUM_RELAYS] = {false};
-int  relaySchedulesStart[NUM_RELAYS] = {0};
-int  relaySchedulesEnd[NUM_RELAYS] = {0};
-String relayNames[NUM_RELAYS] = {
-  FIXED_PUMP_RELAY_NAMES[0],
-  FIXED_PUMP_RELAY_NAMES[1],
-  FIXED_PUMP_RELAY_NAMES[2],
-  "Relay 4",
-  "Relay 5",
-  "Relay 6",
-  "relay 7",
-  "relay 8"
-};
+String relayNames[NUM_RELAYS] = {"Pump 1", "Pump 2", "Pump 3", "Relay 4", "Relay 5", "Relay 6", "", ""};
 
 // Irrigation
 Irrigation irrigation;
+volatile bool irrigationStopRequested = false;
+volatile bool irrigationStartNotifyPending = false;
+volatile bool irrigationStartNotifyViaApi = false;
 const char* KEY_IRRIGATION_TIME_PER_TASK = "irrTimeTask";
 const char* KEY_IRRIGATION_BETWEEN_TASKS = "irrBetween";
 
@@ -236,13 +249,9 @@ const char* KEY_HEATING_SOURCE = "heatingSource";
 SemaphoreHandle_t logBufferMutex = nullptr;
 
 // Relays
-#ifdef GT_BOARD_ESP32_S3_RELAY_6CH
-int activeRelayCount = 6;
-const int relayPins[NUM_RELAYS] = { 1, 2, 41, 42, 45, 46, -1, -1 };
-#else
-int activeRelayCount = 4;
-const int relayPins[NUM_RELAYS] = { 32, 33, 25, 26, 27, 14, 12, 13 };
-#endif
+int activeRelayCount = BOARD_RELAY_COUNT;
+const int relayPins[NUM_RELAYS] = { BOARD_RELAY_PINS[0], BOARD_RELAY_PINS[1], BOARD_RELAY_PINS[2],
+  BOARD_RELAY_PINS[3], BOARD_RELAY_PINS[4], BOARD_RELAY_PINS[5], -1, -1 };
 bool relayStates[NUM_RELAYS] = { false };
 unsigned long relayOffTime[NUM_RELAYS] = {0};
 bool relayActive[NUM_RELAYS] = {false};
