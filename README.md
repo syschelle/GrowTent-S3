@@ -2,11 +2,25 @@
 
 > ⚡ Smart, adaptive grow tent controller for ESP32-S3 6-channel relay boards with real-time climate stabilization and OTA updates
 
-GrowTent-S3 is the ESP32-S3 version of the GrowTent controller firmware. It is based on the same web UI, automation logic, OTA flow, HAP/HomeKit integration and sensor handling as the classic GrowTent project, but is prepared for the **Waveshare ESP32-S3-Relay-6CH** hardware.
+GrowTent-S3 is the ESP32-S3 version of the GrowTent controller firmware. It is based on the same web UI, automation logic, OTA flow, sensor handling as the classic GrowTent project, but is prepared for the **Waveshare ESP32-S3-Relay-6CH** hardware.
 
 GrowTent reads temperature and humidity, computes VPD (Vapor Pressure Deficit), controls relays and Shelly devices, and provides a German/English web interface for monitoring and configuration. The system is designed for **stable long-term operation** and **minimal manual intervention**.
 
 > **Important:** This repository is the firmware channel for ESP32-S3 relay hardware only. Classic ESP32 boards should use the original `syschelle/GrowTent` repository.
+
+## Current adaptation: v0.2.0-beta.1
+
+The current migration uses GrowTent **v0.5.3**, commit `55429b128be26f4f722bc67fdff3555f5f967a94`, with the S3-specific six-relay hardware contract. **Hardware validation is pending.**
+
+- [Migration scope, settings compatibility and rollback](MIGRATION.md)
+- [Testing and open hardware gates](TESTING.md)
+- [Security policy and limitations](SECURITY.md)
+- [Latest release notes](RELEASE_NOTES_v0.2.0-beta.1.md)
+
+Build: `python -m platformio run -e esp32-s3-relay-6ch`.
+Dashboard/API: `http://<device-ip>:8080/`; read-only state at `/api/state` and `/state`.
+The old synchronous dashboard has been replaced by the upstream AsyncWebServer implementation.
+Pump relays 1–3 cannot be used for heater/schedule/general-toggle actions; these are available only on relays 4–6.
 
 ---
 
@@ -34,7 +48,7 @@ GrowTent reads temperature and humidity, computes VPD (Vapor Pressure Deficit), 
 - **Heater control by temperature**
   - ESP relay or Shelly device
 - **Irrigation support**
-  - optional use of available relay channels for pump or watering actions
+  - dedicated Pump 1–3 on relays 1–3; individually enabled and sequential
 - **Tank level monitoring (HC-SR04)**
   - distance-based water level detection
   - usable for irrigation safety (empty tank protection)
@@ -328,57 +342,31 @@ Do **not** point an ESP32-S3 device to the classic ESP32 `GrowTent` release chan
 
 ## API Endpoints
 
-### Core
+All runtime routes use **TCP/8080**. TCP/80 is reserved for WiFi provisioning. Requests that change runtime state are queued and applied outside the Async callback; follow the returned request ID/status instead of treating a 202 response as proof that hardware switched.
 
-- `GET /api/state`  
-  Unified state payload for frontend and external integrations.
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/api/state`, `/state` | Flat state JSON, six physical relays |
+| GET / POST | `/api/relay/{4..6}/state` | Read state or queue explicit control relay state |
+| POST | `/relay/{4..6}/toggle` | Queue control relay toggle |
+| POST | `/pump/{1..3}/triggerPump10s` | Queue dedicated enabled pump pulse |
+| POST | `/startWatering`, `/toggleWatering`, `/pingTank` | Irrigation / tank actions |
+| GET / POST | `/api/settings/relay-name/{4..6}` | Control labels |
+| GET / POST | `/api/settings/relay-schedule/{4..6}` | Minute schedule |
+| GET / POST | `/api/settings/heating-output`, `/api/settings/irrigation`, `/api/settings/run-profile` | Split operating settings |
+| PATCH | `/api/backend/grow-profile` | Optional HMAC-protected backend writes |
+| GET / POST | `/api/settings/backend-write` | Backend write configuration |
+| POST | `/shelly/{main,light,humidifier,heater,fan,exhaust}/toggle` | Shelly action queue |
+| POST | `/api/shelly/reset-energy` | Energy baseline reset |
+| GET | `/api/shelly/action-status` | Shelly action result |
+| GET | `/api/diary/list`, `/api/diary/csv`, `/api/fs/status` | Diary and filesystem reads |
+| POST | `/api/diary/add`, `/api/diary/update`, `/api/diary/delete`, `/api/diary/clear`, `/api/fs/format` | Queued storage actions; destructive actions require their documented confirmation payload |
+| GET | `/api/storage/action-status` | Storage result |
+| GET | `/api/logbuffer` | Log buffer |
+| GET | `/api/ota/check`, `/api/ota/check-status` | Queue update discovery / read result |
+| POST / GET | `/api/ota/update`, `/api/ota/update-status` | Queue firmware update / read result |
 
-### Control
-
-- `POST /relay/{4..6}/toggle`  
-  Generic relay toggle endpoints. In 6CH mode, relays 1..3 are reserved for pumps.
-- `POST /pump/{1..3}/triggerPump10s`  
-  Pump pulse endpoints for Pump 1..3.
-- `POST /startWatering`
-- `POST /pingTank`
-
-### Shelly
-
-- `POST /shelly/main/toggle`
-- `POST /shelly/light/toggle`
-- `POST /shelly/humidifier/toggle`
-- `POST /shelly/heater/toggle`
-- `POST /api/shelly/reset-energy`
-
-### Scheduling / Settings
-
-- `POST /api/relay/schedule/save-all`
-- `POST /savesettings`
-- `POST /saverunsettings`
-- `POST /saveshellysettings`
-- `POST /savemessagesettings`
-
-### Diary / Filesystem
-
-- `GET /api/diary/list`
-- `POST /api/diary/add`
-- `POST /api/diary/clear`
-- `GET /api/fs/status`
-- Manual repair is confirmation-protected and does not run automatically.
-
-### Logs
-
-- `GET /api/logbuffer`
-- `POST /api/logbuffer/clear`
-- `GET /log`
-
-### OTA
-
-- `GET /api/ota/check`
-- `POST /api/ota/update`  
-  Triggers OTA update from the configured firmware URL.
-
----
+Relays 1–3 reject generic relay control/scheduling/name changes; relays 7/8 do not exist. The old broad `/savesettings`, `/saverunsettings` and `/saveshellysettings` saves are retired. See `src/main.cpp` for exact schemas, additional split settings paths and action status routes.
 
 ## ⚙️ Configuration
 
@@ -405,19 +393,7 @@ Do **not** point an ESP32-S3 device to the classic ESP32 `GrowTent` release chan
 
 ## Release workflow
 
-Create a release by pushing a version tag:
-
-```bash
-git add -A
-git commit -m "Update S3 board label and restore relay 4-6 names"
-git push origin main
-git tag v0.1.3
-git push origin v0.1.3
-```
-
-GitHub Actions builds the firmware and uploads `firmware.bin` to the release.
-
----
+Branch/PR builds run `.github/workflows/build.yml` without publishing a release. The tag workflow builds `esp32-s3-relay-6ch`, generates a compact S3 OTA manifest and publishes `firmware.bin` plus `manifest.json`. Keep matching `RELEASE_NOTES_<tag>.md` in the repository. Debug ELF/build information is retained as an Actions artifact. Do not tag this beta for production before completing the [hardware gates](TESTING.md).
 
 ## Repository split
 

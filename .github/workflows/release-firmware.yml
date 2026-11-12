@@ -8,6 +8,12 @@ on:
 permissions:
   contents: write
 
+# Serialize release jobs for the same ref so duplicate tag-push events cannot
+# race while creating/updating the same GitHub Release.
+concurrency:
+  group: firmware-release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build-release:
     runs-on: ubuntu-latest
@@ -15,6 +21,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -32,28 +40,132 @@ jobs:
       - name: Build firmware
         run: pio run -e esp32-s3-relay-6ch
 
-      - name: Verify firmware file
+      - name: Verify firmware files
         run: |
           ls -lh .pio/build/esp32-s3-relay-6ch/
           test -f .pio/build/esp32-s3-relay-6ch/firmware.bin
+          test -f .pio/build/esp32-s3-relay-6ch/firmware.elf
 
       - name: Prepare release file
         run: |
           cp .pio/build/esp32-s3-relay-6ch/firmware.bin firmware.bin
 
-      - name: Create or update GitHub Release
+      - name: Prepare debug symbols
+        run: |
+          cp .pio/build/esp32-s3-relay-6ch/firmware.elf firmware.elf
+          {
+            echo "tag=${GITHUB_REF_NAME}"
+            echo "commit=${GITHUB_SHA}"
+            echo "runner=${RUNNER_OS}"
+            echo
+            pio --version
+            echo
+            pio pkg list -e esp32-s3-relay-6ch || true
+          } > build-info.txt
+          sha256sum firmware.bin firmware.elf > build-sha256.txt
+
+      - name: Upload debug symbols artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: growtent-${{ github.ref_name }}-debug
+          path: |
+            firmware.elf
+            build-info.txt
+            build-sha256.txt
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Prepare release notes
+        run: |
+          NOTES_FILE="RELEASE_NOTES_${GITHUB_REF_NAME}.md"
+          if [ ! -s "${NOTES_FILE}" ]; then
+            echo "ERROR: ${NOTES_FILE} is missing or empty" >&2
+            exit 1
+          fi
+          cp "${NOTES_FILE}" release_notes.md
+          echo "Using ${NOTES_FILE} for GitHub release and OTA manifest"
+
+      - name: Prepare OTA manifest
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          tag = os.environ["GITHUB_REF_NAME"]
+          notes = Path("release_notes.md").read_text(encoding="utf-8")
+
+          # Keep the OTA manifest deliberately compact. Extract the current
+          # release summary, highlights/changes and compatibility sections only;
+          # historical details remain in the GitHub Release body.
+          import re
+
+          def section(title: str) -> str:
+              pattern = rf"(?ms)^## {re.escape(title)}\s*\n(.*?)(?=^## |\Z)"
+              match = re.search(pattern, notes)
+              return match.group(1).strip() if match else ""
+
+          def first_section(*titles: str) -> str:
+              for title in titles:
+                  value = section(title)
+                  if value:
+                      return value
+              return ""
+
+          summary = first_section("Release summary", "Summary")
+          highlights = first_section("Highlights", "Changes")
+          compatibility = section("Compatibility")
+
+          ota_notes = f"# GrowTent {tag}\n"
+          if summary:
+              ota_notes += f"\n## Release summary\n\n{summary}\n"
+          if highlights:
+              ota_notes += f"\n## Highlights\n\n{highlights}\n"
+          if compatibility:
+              ota_notes += f"\n## Compatibility\n\n{compatibility}\n"
+
+          # Hard safety ceiling for installed firmware that reads manifest.json
+          # into a single Arduino String. Keep the OTA changelog self-contained
+          # and do not append external-release boilerplate.
+          if len(ota_notes.encode("utf-8")) > 4096:
+              ota_notes = ota_notes.encode("utf-8")[:3960].decode("utf-8", "ignore")
+              ota_notes += "\n\n[OTA changelog truncated]\n"
+
+          firmware_size = Path("firmware.bin").stat().st_size
+          manifest = {
+              "version": tag,
+              "firmwareUrl": f"https://github.com/syschelle/GrowTent-S3/releases/download/{tag}/firmware.bin",
+              "firmwareSize": firmware_size,
+              "changelog": ota_notes,
+          }
+          Path("manifest.json").write_text(
+              json.dumps(manifest, ensure_ascii=False, separators=(",", ":")),
+              encoding="utf-8",
+          )
+          PY
+          cat manifest.json
+
+      - name: Create GitHub Release and upload OTA assets
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="${GITHUB_REF_NAME}"
+          update_release() {
+            gh release edit "${GITHUB_REF_NAME}" \
+              --title "${GITHUB_REF_NAME}" \
+              --notes-file release_notes.md
+            gh release upload "${GITHUB_REF_NAME}" firmware.bin manifest.json --clobber
+          }
 
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "Release $TAG exists, replacing firmware.bin"
-            gh release upload "$TAG" firmware.bin --clobber
+          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            update_release
           else
-            echo "Creating release $TAG"
-            gh release create "$TAG" firmware.bin \
-              --title "$TAG" \
-              --notes "ESP32-S3 Relay 6CH firmware $TAG" \
-              --verify-tag
+            if ! gh release create "${GITHUB_REF_NAME}" firmware.bin manifest.json \
+              --title "${GITHUB_REF_NAME}" \
+              --notes-file release_notes.md \
+              --verify-tag; then
+              echo "Release creation raced with another run; retrying as update."
+              sleep 3
+              gh release view "${GITHUB_REF_NAME}" >/dev/null
+              update_release
+            fi
           fi

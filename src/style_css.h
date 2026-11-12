@@ -28,8 +28,45 @@ const char cssContent[] PROGMEM = R"rawliteral(
     }
     .hamburger{inline-size:40px;block-size:40px;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:0;color:inherit;cursor:pointer;border-radius:var(--radius);font-size:22px}
     .hamburger:focus-visible{outline:2px solid #fff;outline-offset:2px}
+    .title-stack{display:flex;flex-direction:column;justify-content:center;line-height:1.05;min-width:0}
     .title{font-weight:600;font-size:clamp(1rem,.6vw+.9rem,1.2rem)}
+    .firmware-version{font-size:.68rem;font-weight:500;opacity:.72;margin-top:3px;white-space:nowrap}
+    .hmac-header-status{
+      color:#39d353;
+      font-size:.78rem;
+      font-weight:800;
+      letter-spacing:.06em;
+      line-height:1;
+      white-space:nowrap;
+      text-shadow:0 1px 2px rgba(0,0,0,.35);
+    }
+    .hmac-header-status[hidden]{display:none}
     .datetime{display:flex;flex-direction:column;align-items:flex-end;font-size:.85rem;line-height:1.2}
+
+    .flood-header-status{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      min-width:118px;
+      max-width:260px;
+      padding:4px 10px;
+      border-radius:9px;
+      font-size:.78rem;
+      font-weight:700;
+      line-height:1.15;
+      white-space:nowrap;
+      box-shadow:0 1px 3px rgba(0,0,0,.18);
+    }
+    .flood-header-status[hidden]{display:none}
+    .flood-header-status.flood-ok{background:#1f8f4e;color:#fff}
+    .flood-header-status.flood-alarm{background:#c62828;color:#fff}
+    .flood-header-status.flood-unknown{background:#6c757d;color:#fff}
+    .flood-header-meta{font-size:.68rem;font-weight:600;opacity:.96;margin-top:1px}
+    @media (max-width:900px){
+      .flood-header-meta{display:none}
+      .flood-header-status{min-width:auto;padding:4px 7px}
+    }
 
     .dirty-hint{
       margin-left:8px;
@@ -183,6 +220,10 @@ const char cssContent[] PROGMEM = R"rawliteral(
       transform: translateY(0);            /* wieder runter beim Klick */
       box-shadow: 0 2px 6px rgba(0,0,0,0.15);
       filter: brightness(.95);
+    }
+
+    button.shelly-refresh-button {
+      margin-top: 8px;
     }
 
     @media (min-width:1024px){
@@ -375,6 +416,37 @@ const char cssContent[] PROGMEM = R"rawliteral(
     .relay-status.off {
       background: #dc3545;
     }
+
+    /* Disabled irrigation pumps stay visible but cannot be operated. */
+    .relay-card.irrigation.pump-disabled {
+      opacity: 0.58;
+      filter: grayscale(0.55);
+    }
+
+    .pump-disabled-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 38px;
+      border-radius: 8px;
+      background: #6c757d;
+      color: #fff;
+      font-size: 0.92rem;
+      font-weight: 700;
+      text-transform: none;
+    }
+
+    .pump-disabled-action[hidden] {
+      display: none;
+    }
+
+    #startWateringButton:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      filter: grayscale(1);
+      pointer-events: none;
+    }
        
     .relay-scheduled-label{ flex: 0 0 auto; }
 
@@ -467,6 +539,14 @@ const char cssContent[] PROGMEM = R"rawliteral(
     .shelly-ip {
       width: 120px; /* adjust as you like */
       max-width: 120px;
+    }
+
+    .shelly-gen-detected {
+      display: inline-block;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      white-space: nowrap;
     }
 
     .shelly-other {
@@ -709,5 +789,454 @@ const char cssContent[] PROGMEM = R"rawliteral(
     flex:0 1 160px;
     min-width:140px;
 }
+
+
+    .ota-progress{
+      margin-top:14px;
+      padding:12px;
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      background:var(--muted);
+    }
+    .ota-progress-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:8px;
+    }
+    .ota-progress progress{
+      width:100%;
+      height:20px;
+      display:block;
+    }
+    #otaProgressDetail{margin-top:6px;font-size:.9rem}
+
+
+    /* -------------------- Operating settings compact layout -------------------- */
+    #runsettings.runsettings-page{
+      padding:18px;
+    }
+
+    .runsettings-page-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      margin-bottom:16px;
+    }
+    .runsettings-page-head h1{ margin:0; }
+    .runsettings-head-actions{
+      display:flex;
+      align-items:center;
+      justify-content:flex-end;
+      gap:12px;
+      min-width:0;
+    }
+    .runsettings-phase-control{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      min-width:0;
+      white-space:nowrap;
+    }
+    .runsettings-phase-control label{
+      margin:0;
+      font-size:.9rem;
+      font-weight:600;
+    }
+    .runsettings-phase-control select{
+      width:auto;
+      min-width:150px;
+      margin:0;
+    }
+    .runsettings-energy-reset{
+      width:auto !important;
+      min-width:210px;
+      padding-inline:16px !important;
+      white-space:nowrap;
+    }
+
+    .runsettings-top-grid{
+      display:grid;
+      /* Wide desktop / Full-HD: Grow periods, Temperature and VPD share the top row.
+         Irrigation, its parameters and Heating are grouped in one dedicated row below. */
+      grid-template-columns:
+        minmax(330px,1.15fr)
+        minmax(150px,.42fr)
+        minmax(360px,1.15fr);
+      gap:14px;
+      align-items:stretch;
+    }
+
+    .runsettings-top-grid > .runsettings-panel{
+      height:100%;
+      margin-bottom:0;
+    }
+
+    .runsettings-panel{
+      min-width:0;
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      background:var(--bg);
+      padding:14px 16px 16px;
+      margin:0 0 14px;
+    }
+
+    .runsettings-panel-title{
+      margin:-14px -16px 14px;
+      padding:9px 13px;
+      border-radius:calc(var(--radius) - 1px) calc(var(--radius) - 1px) 0 0;
+      background:var(--header);
+      color:#fff;
+      opacity:1;
+      font-size:1.05rem;
+      font-weight:700;
+    }
+
+    .runsettings-panel-hint,
+    .runsettings-panel .relay-heating-hint,
+    .runsettings-panel .relay-sched-hint{
+      margin:0 0 12px;
+      font-size:.88rem;
+      opacity:.78;
+    }
+
+    .runsettings-fields{
+      display:grid;
+      grid-template-columns:minmax(0,1fr);
+      gap:10px 16px;
+    }
+
+    .runsettings-grow-fields{
+      grid-template-columns:minmax(0,1fr);
+    }
+    .runsettings-field-span-2{ grid-column:auto; }
+
+    .runsettings-field{
+      min-width:0;
+      margin:0;
+    }
+    .runsettings-field label{
+      margin:0 0 5px;
+      font-size:.9rem;
+      font-weight:600;
+    }
+    .runsettings-field input,
+    .runsettings-field select{
+      width:100%;
+      min-height:38px;
+      padding:7px 9px;
+    }
+    .runsettings-field small{
+      display:block;
+      margin-top:4px;
+      font-size:.76rem;
+      line-height:1.3;
+      opacity:.68;
+    }
+
+    .runsettings-control-unit{
+      display:grid;
+      grid-template-columns:minmax(78px,1fr) auto;
+      align-items:center;
+      gap:8px;
+    }
+    .runsettings-control-unit > span{
+      min-width:30px;
+      font-size:.88rem;
+      opacity:.84;
+    }
+
+    .runsettings-compact-grid{
+      display:grid;
+      gap:12px;
+    }
+    .runsettings-vpd-grid{
+      grid-template-columns:repeat(3,minmax(0,1fr));
+    }
+    .runsettings-vpd-enable{
+      padding-bottom:11px;
+      margin-bottom:12px;
+      border-bottom:1px solid var(--border);
+    }
+
+    #runsettings input[type="checkbox"]{
+      width:auto;
+      min-height:0;
+      padding:0;
+      accent-color:var(--header);
+    }
+
+    .runsettings-irrigation-checks{
+      display:grid;
+      grid-template-columns:minmax(145px,.65fr) minmax(0,1.35fr);
+      gap:12px;
+    }
+    .runsettings-pumps-box,
+    .runsettings-flood-box{
+      display:flex;
+      flex-direction:column;
+      gap:9px;
+      padding:11px 12px;
+      border:1px solid var(--border);
+      border-radius:8px;
+      background:var(--muted);
+    }
+    .runsettings-flood-box small{
+      padding-left:26px;
+      font-size:.78rem;
+      line-height:1.35;
+      opacity:.7;
+    }
+
+    .runsettings-operations-row{
+      display:grid;
+      grid-template-columns:minmax(280px,.9fr) minmax(620px,2.15fr) minmax(300px,1fr);
+      gap:14px;
+      align-items:stretch;
+      margin-top:14px;
+      margin-bottom:14px;
+    }
+    .runsettings-operations-row > .runsettings-panel{
+      height:100%;
+      margin-bottom:0;
+    }
+    .runsettings-irrigation-checks-stacked{
+      grid-template-columns:1fr;
+    }
+    .runsettings-irrigation-params{
+      margin-top:0;
+    }
+    .runsettings-param-grid{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:14px 18px;
+    }
+    .runsettings-param-grid-inline{
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:12px 14px;
+    }
+
+    .runsettings-heating-panel{
+      margin-top:0;
+    }
+    .runsettings-heating-grid{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+      gap:16px;
+    }
+    .runsettings-heating-grid-stacked{
+      grid-template-columns:1fr;
+      gap:12px;
+    }
+
+    #runsettings .relay-sched{
+      margin-top:0;
+      padding-top:14px;
+      border-top:1px solid var(--border);
+    }
+    #runsettings.runsettings-page > .relay-sched,
+    #runsettings .runsettings-relay-panel{
+      border-top:1px solid var(--border);
+    }
+
+    .runsettings-relay-table-wrap{
+      width:100%;
+      overflow-x:auto;
+      border:1px solid var(--border);
+      border-radius:8px;
+      background:var(--muted);
+    }
+    .runsettings-relay-table{
+      display:block;
+      min-width:820px;
+    }
+    .runsettings-relay-head,
+    #runsettings .runsettings-relay-row{
+      display:grid;
+      grid-template-columns:42px minmax(150px,1.4fr) minmax(90px,.7fr) minmax(155px,1.05fr) minmax(135px,.9fr) minmax(135px,.9fr);
+      gap:0;
+      align-items:center;
+    }
+    .runsettings-relay-head{
+      background:var(--header);
+      color:#fff;
+      font-weight:700;
+      font-size:.82rem;
+    }
+    .runsettings-relay-head > div{
+      padding:9px 10px;
+      text-align:left;
+    }
+    #runsettings .runsettings-relay-row{
+      padding:0;
+      border:0;
+      border-radius:0;
+      background:transparent;
+      color:var(--text);
+      min-height:48px;
+    }
+    #runsettings .runsettings-relay-row + .runsettings-relay-row{
+      border-top:1px solid var(--border);
+    }
+    #runsettings .runsettings-relay-row > div{
+      min-width:0;
+      padding:7px 10px;
+    }
+    #runsettings .runsettings-relay-row label{ color:var(--text); }
+    .runsettings-relay-number{
+      text-align:center;
+      font-weight:700;
+      opacity:.72;
+    }
+    #runsettings .runsettings-relay-row .relay-sched-name{
+      min-width:0;
+      max-width:none;
+      width:auto;
+    }
+    #runsettings .runsettings-relay-row .relay-sched-name-label{
+      display:none;
+    }
+    #runsettings .runsettings-relay-row .relay-sched-name-value{
+      font-weight:600;
+    }
+    #runsettings .runsettings-relay-row .sched-field.chk{
+      min-width:0;
+    }
+    #runsettings .runsettings-relay-row .sched-field.chk .inline-checkbox{
+      gap:0;
+      justify-content:flex-start;
+    }
+    #runsettings .runsettings-relay-row .sched-field.chk span,
+    #runsettings .runsettings-relay-row .sched-field.minute label{
+      display:none;
+    }
+    #runsettings .runsettings-relay-row .sched-field.minute{
+      min-width:0;
+      width:auto;
+    }
+    #runsettings .runsettings-relay-row .sched-field.minute input[type="number"]{
+      width:100%;
+      max-width:110px;
+      min-height:34px;
+      padding:6px 8px;
+      background:var(--muted);
+      color:var(--text);
+    }
+    :root[data-theme='dark'] #runsettings .runsettings-relay-row .sched-field.minute input[type="number"]{
+      background:var(--muted);
+      color:var(--text);
+    }
+
+    .runsettings-actions{
+      display:flex;
+      justify-content:flex-end;
+      padding-top:2px;
+    }
+    .runsettings-actions .primary{
+      width:auto;
+      min-width:190px;
+      padding-inline:22px;
+      font-weight:700;
+    }
+
+    /* Below desktop widths, fall back to a balanced 2 x 2 layout. Full-HD
+       remains four columns because the asymmetric tracks above free enough
+       space for the Irrigation card. */
+    @media (max-width:1500px){
+      .runsettings-top-grid{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .runsettings-operations-row{ grid-template-columns:minmax(260px,.85fr) minmax(0,1.65fr); }
+      .runsettings-operations-row .runsettings-heating-panel{ grid-column:1 / -1; }
+      .runsettings-heating-grid-stacked{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+    }
+
+    @media (max-width:1100px){
+      .runsettings-operations-row{ grid-template-columns:1fr; }
+      .runsettings-operations-row .runsettings-heating-panel{ grid-column:auto; }
+      .runsettings-param-grid,
+      .runsettings-param-grid-inline{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .runsettings-vpd-grid{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .runsettings-heating-grid-stacked{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+    }
+
+    @media (max-width:760px){
+      #runsettings.runsettings-page{ padding:12px; }
+      .runsettings-page-head{ align-items:stretch; flex-direction:column; }
+      .runsettings-head-actions{
+        align-items:stretch;
+        flex-direction:column;
+      }
+      .runsettings-phase-control{
+        justify-content:space-between;
+        width:100%;
+      }
+      .runsettings-phase-control select{
+        min-width:0;
+        width:min(190px, 58vw);
+      }
+      .runsettings-energy-reset{ width:100% !important; }
+      .runsettings-top-grid,
+      .runsettings-operations-row,
+      .runsettings-grow-fields,
+      .runsettings-heating-grid,
+      .runsettings-heating-grid-stacked,
+      .runsettings-irrigation-checks,
+      .runsettings-param-grid,
+      .runsettings-param-grid-inline,
+      .runsettings-vpd-grid{
+        grid-template-columns:1fr;
+      }
+      .runsettings-panel{ padding:12px; }
+      .runsettings-panel-title{ margin:-12px -12px 12px; }
+      .runsettings-actions .primary{ width:100%; }
+
+      .runsettings-relay-table-wrap{
+        overflow:visible;
+        border:0;
+        background:transparent;
+      }
+      .runsettings-relay-table{ min-width:0; }
+      .runsettings-relay-head{ display:none; }
+      #runsettings .runsettings-relay-row{
+        display:grid;
+        grid-template-columns:34px 1fr;
+        gap:8px 10px;
+        padding:10px;
+        margin-bottom:10px;
+        border:1px solid var(--border);
+        border-radius:8px;
+        background:var(--muted);
+      }
+      #runsettings .runsettings-relay-row + .runsettings-relay-row{ border-top:1px solid var(--border); }
+      #runsettings .runsettings-relay-row > div{ padding:2px 0; }
+      #runsettings .runsettings-relay-row .relay-sched-name{
+        grid-column:2;
+      }
+      #runsettings .runsettings-relay-row .relay-sched-name-label{
+        display:block;
+        font-size:.76rem;
+        opacity:.65;
+      }
+      #runsettings .runsettings-relay-row .sched-field{
+        grid-column:2;
+      }
+      #runsettings .runsettings-relay-row .sched-field.chk span,
+      #runsettings .runsettings-relay-row .sched-field.minute label{
+        display:inline;
+      }
+      #runsettings .runsettings-relay-row .sched-field.chk .inline-checkbox{
+        gap:8px;
+      }
+      #runsettings .runsettings-relay-row .sched-field.minute{
+        display:grid;
+        grid-template-columns:minmax(130px,1fr) 100px;
+        gap:8px;
+        align-items:center;
+      }
+      #runsettings .runsettings-relay-row .sched-field.minute input[type="number"]{
+        max-width:none;
+      }
+    }
 
 )rawliteral";

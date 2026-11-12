@@ -5,17 +5,16 @@
 #include <Adafruit_BME280.h>
 #include "freertos/semphr.h"
 
-// -------------------- Constants / defines --------------------
+// -------------------- Konstanten / Defines --------------------
 #define MAX_RELAYS 8
 #ifndef DS18B20_PIN
-  #define DS18B20_PIN 4
+#define DS18B20_PIN 4
 #endif
 #ifndef STATUS_LED_PIN
-  #define STATUS_LED_PIN 23
+#define STATUS_LED_PIN -1
 #endif
-#ifndef BME_ADDR
-  #define BME_ADDR 0x76
-#endif
+#include "board_profile.h"
+#define BME_ADDR 0x76
 
 #ifndef I2C_SDA
   #define I2C_SDA 21
@@ -28,35 +27,17 @@
 #define MAX_RELAYS 8
 #define NUM_RELAYS MAX_RELAYS // keep compatibility in existing code
 
-// ESP32-S3 Relay 6CH layout:
-// relays 1..3 are reserved for the three watering pumps,
-// relays 4..6 remain available as general-purpose control relays.
-#define PUMP_RELAY_FIRST 1
-#define PUMP_RELAY_LAST 3
-#define PUMP_RELAY_FIRST_IDX (PUMP_RELAY_FIRST - 1)
-#define PUMP_RELAY_LAST_IDX (PUMP_RELAY_LAST - 1)
-#define PUMP_RELAY_COUNT (PUMP_RELAY_LAST - PUMP_RELAY_FIRST + 1)
+// Irrigation pump mapping for the S3 six-relay board.
+// The values are zero-based relay indices, so relay 1 is index 0.
+constexpr size_t IRRIGATION_PUMP_COUNT = 3;
+constexpr int IRRIGATION_PUMP_RELAY_INDEX[IRRIGATION_PUMP_COUNT] = {0, 1, 2};
 
-// Fixed logical names for the dedicated pump outputs.
-extern const char* const FIXED_PUMP_RELAY_NAMES[PUMP_RELAY_COUNT];
-
-#define CONTROL_RELAY_FIRST 4
-#define CONTROL_RELAY_LAST 6
-#define CONTROL_RELAY_FIRST_IDX (CONTROL_RELAY_FIRST - 1)
-#define CONTROL_RELAY_LAST_IDX (CONTROL_RELAY_LAST - 1)
-
-// Return a stable default label for a general-purpose relay.
-String defaultControlRelayName(int relayNumber);
-
-// Keep custom names, but replace empty or obsolete pump defaults from the
-// previous relay layout with the correct general-purpose relay label.
-String normalizeControlRelayName(const String& candidate, int relayNumber);
-
-extern int activeRelayCount; // runtime: 4 or 6 on the S3 repo
+extern int activeRelayCount; // fixed six physical S3 outputs
+extern String normalizeControlRelayName(const String&, int);
 extern const char* KEY_RELAY_COUNT;
 extern SemaphoreHandle_t relayMutex;
 
-// -------------------- Data structures --------------------
+// -------------------- Structs (erst Typen, dann Settings) --------------------
 struct DailySchedule {
     int onHour;
     int onMinute;
@@ -94,6 +75,7 @@ struct ShellySettings {
   ShellyDevice heater;
   ShellyDevice fan;
   ShellyDevice exhaust;
+  ShellyDevice heatmat;   // passive monitoring only; never switched by GrowTent
 
   String username;
   String password;
@@ -164,9 +146,34 @@ struct DebugGroup {
   bool enabled = false;
 };
 
+struct FloodSettings {
+  bool enabled = false;
+  String webhookToken;
+};
+
+struct BackendWriteSettings {
+  bool enabled = false;
+  String allowedIp;
+  String secretHex; // 32-byte HMAC key as 64 lowercase hex chars; never exposed.
+};
+
+struct FloodState {
+  bool known = false;
+  bool alarm = false;
+  int batteryPct = -1;  // -1 = no battery value received yet
+  String lastSeen;
+};
+
 struct HeatingGroup {
-int sourceType = 0; // 0=disabled, 1=ESP relay, 2=Shelly plug
-int Relay = 0; // used only when sourceType == 1
+  int sourceType = 0; // 0=disabled, 1=ESP relay, 2=Shelly plug
+  int Relay = 0; // used only when sourceType == 1
+
+  // Heater controller tuning. Defaults preserve the proven pre-v0.2.66
+  // behaviour exactly.
+  float hysteresisC = 0.25f;
+  float predictSeconds = 180.0f;
+  int minOnSeconds = 120;
+  int minOffSeconds = 120;
 };
 
 struct Tank {
@@ -176,13 +183,22 @@ struct Tank {
 };
 
 struct Irrigation {
-  float amount = 0.0f; 
+  float amount = 0.0f;
   int irrigationRuns = 0;
   int timePerTask = 0;
   int betweenTasks = 0;
   float amountOfWater = 0.0f;
   float tankLevelPercent = 0.0f;
   String wTimeLeft = "00:00";
+
+  // Each pump can be disabled independently when fewer pots are in use.
+  // Defaults remain enabled to preserve the behavior of existing installations.
+  bool pumpEnabled[IRRIGATION_PUMP_COUNT] = {true, true, true};
+
+  // Optional safety interlock: an incoming Flood S Gen4 alarm can abort an
+  // active automatic irrigation cycle. Disabled by default for compatibility.
+  bool stopOnFloodAlarm = false;
+
   Tank tank;
 };
 
@@ -194,8 +210,10 @@ struct Settings {
   ShellySettings shelly;
   UIGroup ui;
   NotifyGroup notify;
+  FloodSettings flood;
+  BackendWriteSettings backendWrite;
 
-  // Pump labels for relay 1..3
+  // Pump labels for relay 6..8
   String pump1 = "Pump 1";
   String pump2 = "Pump 2";
   String pump3 = "Pump 3";
@@ -249,6 +267,7 @@ struct AvgAccumulator {
 // Debug
 extern const char* KEY_DEBUG_ENABLED;
 extern bool debugLog;
+extern FloodState floodState;
 
 // request restart (handled in loop)
 extern volatile bool g_restartRequested;
@@ -285,9 +304,16 @@ extern const char* KEY_TARGETVPD;
 extern const char* KEY_MINVPD_MON;
 extern const char* KEY_MINVPD;
 extern const char* KEY_HYSTERESIS;
+extern const char* KEY_BACKEND_WRITE_ENABLED;
+extern const char* KEY_BACKEND_WRITE_IP;
+extern const char* KEY_BACKEND_WRITE_SECRET;
 extern const char* KEY_LIGHT_ON_TIME;
 extern const char* KEY_LIGHT_DAY_HOURS;
 extern const char* KEY_HEATING_RELAY;
+extern const char* KEY_HEAT_HYSTERESIS;
+extern const char* KEY_HEAT_PREDICT;
+extern const char* KEY_HEAT_MIN_ON;
+extern const char* KEY_HEAT_MIN_OFF;
 
 // Relay scheduling keys (enabled as stored in Preferences)
 extern const char* KEY_HEATING_SOURCE;
@@ -326,10 +352,21 @@ extern const char* KEY_SHELLYFANOFF;
 extern const char* KEY_SHELLYEXHAUSTIP;
 extern const char* KEY_SHELLYEXHAUSTGEN;
 extern const char* KEY_SHELLYEXHAUSTOFF;
+extern const char* KEY_SHELLYHEATMATIP;
+extern const char* KEY_SHELLYHEATMATGEN;
+extern const char* KEY_SHELLYHEATMATOFF;
 
 extern const char* KEY_SHELLYUSERNAME;
 extern const char* KEY_SHELLYUSERNAME;
 extern const char* KEY_SHELLYPASSWORD;
+
+// Flood S Gen4 webhook settings/state keys
+extern const char* KEY_FLOOD_ENABLED;
+extern const char* KEY_FLOOD_TOKEN;
+extern const char* KEY_FLOOD_KNOWN;
+extern const char* KEY_FLOOD_ALARM;
+extern const char* KEY_FLOOD_BATTERY;
+extern const char* KEY_FLOOD_LAST_SEEN;
 extern const char* KEY_POWER_PRICE_KWH;
 extern float powerPriceKwhEur;
 
@@ -360,6 +397,10 @@ extern const char* KEY_AMOUNTOFWATER;
 extern const char* KEY_IRRIGATION;
 extern const char* KEY_MINTANK;
 extern const char* KEY_MAXTANK;
+extern const char* KEY_PUMP1_ENABLED;
+extern const char* KEY_PUMP2_ENABLED;
+extern const char* KEY_PUMP3_ENABLED;
+extern const char* KEY_IRRIGATION_STOP_ON_FLOOD;
 
 // Notification keys
 extern const char* KEY_PUSHOVER;
@@ -430,6 +471,11 @@ extern String DS18B20Name;
 
 //Irrigation
 extern Irrigation irrigation;
+extern volatile bool irrigationStopRequested;
+// Async irrigation starts defer notification delivery to taskWatering() so the
+// Arduino main loop remains available for Flood-event application.
+extern volatile bool irrigationStartNotifyPending;
+extern volatile bool irrigationStartNotifyViaApi;
 
  // to detect changes and update UI accordingly
 extern const char* KEY_IRRIGATION_TIME_PER_TASK;

@@ -5,6 +5,7 @@
 #include <Preferences.h>
 #include <Adafruit_BME280.h>
 #include "globals.h"
+#include "ota.h"
 #include <cstdarg>
 
 extern Preferences preferences;
@@ -12,7 +13,7 @@ extern bool bmeAvailable;
 extern Adafruit_BME280 bme;
 
 void taskCheckBMESensor(void *parameter) {
-  static UBaseType_t minFree = UINT32_MAX;
+  static UBaseType_t minFreeBytes = UINT32_MAX;
 
   // Read sensors every 10 seconds
   const uint32_t sensorReadIntervalMs = 10UL * 1000UL;
@@ -30,13 +31,20 @@ void taskCheckBMESensor(void *parameter) {
 
 
   for (;;) {
+    if (otaMaintenanceRequested()) {
+      Serial.println("[OTA MAINT] BME task releasing stack");
+      otaNotifyMaintenanceTaskStopped(OTA_MAINT_TASK_BME);
+      vTaskDelete(nullptr);
+      return;
+    }
+
     updateGrowTimeValues();
 
     // --- stack watermark logging (debug) ---
-    UBaseType_t freeWords = uxTaskGetStackHighWaterMark(NULL);
+    UBaseType_t freeBytes = uxTaskGetStackHighWaterMark(NULL);
 
-    if (freeWords < minFree) {
-      minFree = freeWords;
+    if (freeBytes < minFreeBytes) {
+      minFreeBytes = freeBytes;
     }
 
     const uint32_t logIntervalMs = debugLog ? 5000UL : 60000UL;
@@ -49,10 +57,9 @@ void taskCheckBMESensor(void *parameter) {
       snprintf(
         buf,
         sizeof(buf),
-        "[TASK][Check_Sensor] free=%u words (%u bytes), min=%u words",
-        freeWords,
-        freeWords * 4,
-        minFree
+        "[TASK][Check_Sensor] free=%u bytes, min=%u bytes",
+        freeBytes,
+        minFreeBytes
       );
 
       logPrint(String(buf));
@@ -71,11 +78,11 @@ void taskCheckBMESensor(void *parameter) {
       controlMinVPD();
       applyRelaySchedules();
 
-      // Tank auto-ping (8x only):
+      // Tank auto-ping (S3 six-relay layout):
       // - one immediate ping at startup when no initial value exists
       // - every 2 hours after successful pings
       // - retry every 30 seconds only while ping keeps failing
-      if (activeRelayCount == 8) {
+      if (activeRelayCount == BOARD_RELAY_COUNT) {
           const uint32_t RETRY_MS = 30000UL; // 30 seconds on failure
 
           const bool noInitialValue =

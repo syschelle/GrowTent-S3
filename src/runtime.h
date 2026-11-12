@@ -4,9 +4,17 @@
 #include <StreamString.h>
 #include <WString.h>
 #include <Preferences.h>
-#include <WebServer.h>
+#include "preferences_safe.h"
 #include <OneWire.h>
 #include <DallasTemperature.h>
+
+#if __has_include("build_version.h")
+#include "build_version.h"
+#endif
+
+#ifndef FW_VERSION
+#define FW_VERSION "dev"
+#endif
 
 // Include global definitions and functions
 #include <globals.h>
@@ -16,7 +24,6 @@
 // external DallasTemperature sensor instance (defined in a single .cpp file)
 extern DallasTemperature sensors;
 
-extern WebServer server;
 
 void loadPrefInt(
   const char* prefKey,
@@ -63,199 +70,213 @@ extern void updateGrowTimeValues();
 // forward declaration for calcVPD (defined elsewhere)
 float calcVPD(float temperatureC, float leafOffset, float humidityPct);
 
-// Handle root path "/"
-void handleRoot() {
-  
-  String html;
-  if (espMode) {
-    String sensorData = readSensorData();
-
-    // Build HTML
-    html = FPSTR(apPage);
-    // Replace placeholders in index_html.h
-    //html.replace("%DBG_CHECKED%", debugLog ? "checked" : "");
-    html.replace("%CONTROLLERNAME%", settings.ui.boxName);
+// Apply all dynamic values to one small chunk of the main HTML template.
+// Keeping this separate allows the page to be streamed without allocating the
+// complete ~53 KB document as one contiguous heap String.
+static void applyMainPageReplacements(String& html) {
+  if (startDate != "") {
+    String days = String(settings.grow.currentGrowDay);
+    String weeks = String(settings.grow.currentGrowWeek);
+    if (language == "de") {
+      html.replace("%CURRENTGROW%", "Grow seit: Tag " + days + " / Woche " + weeks);
     } else {
-    html = FPSTR(htmlPage);
-
-    updateGrowTimeValues();
-
-    if (startDate != "") {
-      String days = String(settings.grow.currentGrowDay);
-      String weeks = String(settings.grow.currentGrowWeek);
-      if (language == "de") {
-        html.replace("%CURRENTGROW%", "Grow seit: Tag " + days + " / Woche " + weeks);
-      } else {
-        html.replace("%CURRENTGROW%", "Growing since: day " + days + " / week " + weeks);
-      } 
-    } else {
-      html.replace("%CURRENTGROW%", "");
+      html.replace("%CURRENTGROW%", "Growing since: day " + days + " / week " + weeks);
     }
-
-    if (settings.grow.currentPhase == 1) {
-      String days = String(settings.grow.currentPhaseDay);
-      String weeks = String(settings.grow.currentPhaseWeek);
-      if (language == "de") {
-        html.replace("%CURRENTPHASE%", "<font color=\"lightgreen\">Wachstum: Tag " + days + " / Woche " + weeks + "</font>");
-      } else {
-        html.replace("%CURRENTPHASE%", "<font color=\"lightgreen\">Vegetative: day " + days + " / week " + weeks + "</font>");
-      }
-    } else if (settings.grow.currentPhase == 2) {
-      String days = String(settings.grow.currentPhaseDay);
-      String weeks = String(settings.grow.currentPhaseWeek);
-      if (language == "de") {
-        html.replace("%CURRENTPHASE%", "<font color=\"#ff9900\">Blüte: Tag " + days + " / Woche " + weeks + "</font>");
-      } else {
-        html.replace("%CURRENTPHASE%", "<font color=\"#ff9900\">Flowering: day " + days + " / week " + weeks + "</font>");
-      }
-    } else if (settings.grow.currentPhase == 3) {
-      String days = String(settings.grow.currentPhaseDay);
-      String weeks = String(settings.grow.currentPhaseWeek);
-      if (language == "de") {
-        html.replace("%CURRENTPHASE%", "<font color=\"lightblue\">Trocknung: Tage " + days + " / Woche " + weeks + "</font>");
-      } else {
-        html.replace("%CURRENTPHASE%", "<font color=\"lightblue\">Drying: day " + days + " / week " + weeks + "</font>");
-      }
-    } else {
-      html.replace("%CURRENTPHASE%", "");
-    }
-
-    html.replace("%CONTROLLERNAME%", settings.ui.boxName);
-
-    // Replace placeholders in index_html.h
-    html.replace("%TARGETTEMPERATURE%", String(settings.grow.targetTemperature, 1));
-    html.replace("%LIGHTONTIME%", lightOnTime);
-    html.replace("%LIGHTDAYHOURS%", String(lightDayHours));
-    html.replace("%WATERTEMPERATURE%", String(DS18B20STemperature, 1));
-    html.replace("%LEAFTEMPERATURE%", String(settings.grow.offsetLeafTemperature, 1));
-    html.replace("%HUMIDITY%", String(cur.humidityPct, 0));
-    html.replace("%TARGETVPD%",  String(settings.grow.targetVPD, 2));
-    html.replace("%MINVPDMONITORING%", settings.grow.minVpdMonEnabled ? "checked" : "");
-    html.replace("%MINVPD%",  String(settings.grow.minVPD, 2));
-    html.replace("%VPDHYSTERESIS%",  String(settings.grow.vpdHysteresis, 2));
-
-    // Irrigation settings
-    html.replace("%TIMEPERTASK%", String(irrigation.timePerTask));
-    html.replace("%BETWEENTASKS%", String(irrigation.betweenTasks));
-    html.replace("%AMOUNTOFWATER%", String(irrigation.amountOfWater));
-    html.replace("%IRRIGATION%", String(irrigation.amount));
-    
-    String minTankStr = String(irrigation.tank.min, 1); minTankStr.trim();
-    String maxTankStr = String(irrigation.tank.max, 1); maxTankStr.trim();
-    html.replace("%MINTANK%", minTankStr);
-    html.replace("%MAXTANK%", maxTankStr);
-
-    html.replace("%RELAYNAMES1%", String(settings.relay.name[0]));
-    html.replace("%ESPRELAY1_ENABLED_CHECKED%", settings.relay.schedule[0]. enabled ? "checked" : "");
-    html.replace("%ESPRELAY1_IFLIGHTOFF_CHECKED%", settings.relay.schedule[0].ifLightOff ? "checked" : "");
-    html.replace("%ESPRELAY1_ONMIN%", String(settings.relay.schedule[0].onMin));
-    html.replace("%ESPRELAY1_OFFMIN%", String(settings.relay.schedule[0].offMin));
-    html.replace("%RELAYNAMES2%", String(settings.relay.name[1]));
-    html.replace("%ESPRELAY2_ENABLED_CHECKED%", settings.relay.schedule[1]. enabled ? "checked" : "");
-    html.replace("%ESPRELAY2_IFLIGHTOFF_CHECKED%", settings.relay.schedule[1].ifLightOff ? "checked" : "");
-    html.replace("%ESPRELAY2_ONMIN%", String(settings.relay.schedule[1].onMin));
-    html.replace("%ESPRELAY2_OFFMIN%", String(settings.relay.schedule[1].offMin));
-    html.replace("%RELAYNAMES3%", String(settings.relay.name[2]));
-    html.replace("%ESPRELAY3_ENABLED_CHECKED%", settings.relay.schedule[2]. enabled ? "checked" : "");
-    html.replace("%ESPRELAY3_IFLIGHTOFF_CHECKED%", settings.relay.schedule[2].ifLightOff ? "checked" : "");
-    html.replace("%ESPRELAY3_ONMIN%", String(settings.relay.schedule[2].onMin));
-    html.replace("%ESPRELAY3_OFFMIN%", String(settings.relay.schedule[2].offMin));
-    html.replace("%RELAYNAMES4%", String(settings.relay.name[3]));
-    html.replace("%ESPRELAY4_ENABLED_CHECKED%", settings.relay.schedule[3]. enabled ? "checked" : "");
-    html.replace("%ESPRELAY4_IFLIGHTOFF_CHECKED%", settings.relay.schedule[3].ifLightOff ? "checked" : "");
-    html.replace("%ESPRELAY4_ONMIN%", String(settings.relay.schedule[3].onMin));
-    html.replace("%ESPRELAY4_OFFMIN%", String(settings.relay.schedule[3].offMin));
-    html.replace("%RELAYNAMES5%", String(settings.relay.name[4]));
-    html.replace("%RELAYNAMES6%", String(settings.relay.name[5]));
-    html.replace("%ESPRELAY5_ENABLED_CHECKED%", settings.relay.schedule[4].enabled ? "checked" : "");
-    html.replace("%ESPRELAY5_IFLIGHTOFF_CHECKED%", settings.relay.schedule[4].ifLightOff ? "checked" : "");
-    html.replace("%ESPRELAY5_ONMIN%", String(settings.relay.schedule[4].onMin));
-    html.replace("%ESPRELAY5_OFFMIN%", String(settings.relay.schedule[4].offMin));
-    html.replace("%ESPRELAY6_ENABLED_CHECKED%", settings.relay.schedule[5].enabled ? "checked" : "");
-    html.replace("%ESPRELAY6_IFLIGHTOFF_CHECKED%", settings.relay.schedule[5].ifLightOff ? "checked" : "");
-    html.replace("%ESPRELAY6_ONMIN%", String(settings.relay.schedule[5].onMin));
-    html.replace("%ESPRELAY6_OFFMIN%", String(settings.relay.schedule[5].offMin));
-
-    html.replace("%HEATSRC0_SEL%", settings.heating.sourceType == 0 ? "selected" : "");
-    html.replace("%HEATSRC1_SEL%", settings.heating.sourceType == 1 ? "selected" : "");
-    html.replace("%HEATSRC2_SEL%", settings.heating.sourceType == 2 ? "selected" : "");
-
-    html.replace("%DBG_CHECKED%", debugLog ? "checked" : "");
-
-    html.replace("%GROWSTARTDATE%", String(startDate));
-    html.replace("%GROWFLOWERDATE%", String(startFlowering));
-    html.replace("%GROWDRAYINGDATE%", String(startDrying));
-
-    html.replace("%PHASE1_SEL%", settings.grow.currentPhase == 1 ? "selected" : "");
-    html.replace("%PHASE2_SEL%", settings.grow.currentPhase == 2 ? "selected" : "");
-    html.replace("%PHASE3_SEL%", settings.grow.currentPhase == 3 ? "selected" : "");
-
-    html.replace("%TARGETVPD%", String(settings.grow.targetVPD, 1));
-
-    html.replace("%HEATRELAY4_SEL%", settings.heating.Relay == 4 ? "selected" : "");
-    html.replace("%HEATRELAY5_SEL%", settings.heating.Relay == 5 ? "selected" : "");
-    html.replace("%HEATRELAY6_SEL%", settings.heating.Relay == 6 ? "selected" : "");
-
-    html.replace("%SHELLYMAINIP%", settings.shelly.main.ip);
-    html.replace("%SHMAINSWKIND1%", settings.shelly.main.gen == 1 ? "selected" : "");
-    html.replace("%SHMAINSWKIND2%", settings.shelly.main.gen == 2 ? "selected" : "");
-    html.replace("%SHMAINSWKIND3%", settings.shelly.main.gen == 3 ? "selected" : "");
-
-    html.replace("%SHELLYLIGHTIP%", settings.shelly.light.ip);
-    html.replace("%SHLIGHTKIND1%", settings.shelly.light.gen == 1 ? "selected" : "");
-    html.replace("%SHLIGHTKIND2%", settings.shelly.light.gen == 2 ? "selected" : "");
-    html.replace("%SHLIGHTKIND3%", settings.shelly.light.gen == 3 ? "selected" : "");
-
-    html.replace("%SHELLYHUMIDIFIERIP%", settings.shelly.humidifier.ip);
-    html.replace("%SHHUMIDIFIERKIND1%", settings.shelly.humidifier.gen == 1 ? "selected" : "");
-    html.replace("%SHHUMIDIFIERKIND2%", settings.shelly.humidifier.gen == 2 ? "selected" : "");
-    html.replace("%SHHUMIDIFIERKIND3%", settings.shelly.humidifier.gen == 3 ? "selected" : "");
-
-    html.replace("%SHELLYHEATERIP%", settings.shelly.heater.ip);
-    html.replace("%SHHEATERKIND1%", settings.shelly.heater.gen == 1 ? "selected" : "");
-    html.replace("%SHHEATERKIND2%", settings.shelly.heater.gen == 2 ? "selected" : "");
-    html.replace("%SHHEATERKIND3%", settings.shelly.heater.gen == 3 ? "selected" : "");
-
-    html.replace("%SHELLYFANIP%", settings.shelly.fan.ip);
-    html.replace("%SHFANKIND1%", settings.shelly.fan.gen == 1 ? "selected" : "");
-    html.replace("%SHFANKIND2%", settings.shelly.fan.gen == 2 ? "selected" : "");
-    html.replace("%SHFANKIND3%", settings.shelly.fan.gen == 3 ? "selected" : "");
-
-    html.replace("%SHELLYEXHAUSTIP%", settings.shelly.exhaust.ip);
-    html.replace("%SHEXHAUSTKIND1%", settings.shelly.exhaust.gen == 1 ? "selected" : "");
-    html.replace("%SHEXHAUSTKIND2%", settings.shelly.exhaust.gen == 2 ? "selected" : "");
-    html.replace("%SHEXHAUSTKIND3%", settings.shelly.exhaust.gen == 3 ? "selected" : "");
-
-    html.replace("%POWERPRICEKWH%", String(powerPriceKwhEur, 2));
-
-    html.replace("%SHUSER%", settings.shelly.username);
-    html.replace("%SHPASSWORD%", settings.shelly.password);
-
-    html.replace("%RELAYCOUNT4_SEL%", activeRelayCount == 4 ? "selected" : "");
-    html.replace("%RELAYCOUNT6_SEL%", activeRelayCount == 6 ? "selected" : "");
-    html.replace("%RELAYCOUNT8_SEL%", activeRelayCount == 8 ? "selected" : "");
-
-
-    html.replace("%NTPSERVER%", ntpServer);
-    html.replace("%TZINFO%", tzInfo);
-    html.replace("%THEME%", theme);
-    html.replace("%LANGUAGE%", language);
-    html.replace("%TIMEFORMAT%", timeFormat);
-    html.replace("%UNIT%", unit);
-    html.replace("%DS18B20ENABLE%", DS18B20Enable);
-    html.replace("%DS18B20NAME%", DS18B20Name);
-
-    html.replace("%PUSHOVERENABLED%", pushoverEnabled);
-    html.replace("%PUSHOVERAPPKEY%", pushoverAppKey);
-    html.replace("%PUSHOVERUSERKEY%", pushoverUserKey);
-    html.replace("%PUSHOVERDEVICE%", pushoverDevice);
-    html.replace("%GOTIFYENABLED%", gotifyEnabled);
-    html.replace("%GOTIFYURL%", gotifyServer);
-    html.replace("%GOTIFYTOKEN%", gotifyToken);
+  } else {
+    html.replace("%CURRENTGROW%", "");
   }
 
-  server.send(200, "text/html", html);
+  if (settings.grow.currentPhase == 1) {
+    String days = String(settings.grow.currentPhaseDay);
+    String weeks = String(settings.grow.currentPhaseWeek);
+    if (language == "de") {
+      html.replace("%CURRENTPHASE%", "<font color=\"lightgreen\">Wachstum: Tag " + days + " / Woche " + weeks + "</font>");
+    } else {
+      html.replace("%CURRENTPHASE%", "<font color=\"lightgreen\">Vegetative: day " + days + " / week " + weeks + "</font>");
+    }
+  } else if (settings.grow.currentPhase == 2) {
+    String days = String(settings.grow.currentPhaseDay);
+    String weeks = String(settings.grow.currentPhaseWeek);
+    if (language == "de") {
+      html.replace("%CURRENTPHASE%", "<font color=\"#ff9900\">Blüte: Tag " + days + " / Woche " + weeks + "</font>");
+    } else {
+      html.replace("%CURRENTPHASE%", "<font color=\"#ff9900\">Flowering: day " + days + " / week " + weeks + "</font>");
+    }
+  } else if (settings.grow.currentPhase == 3) {
+    String days = String(settings.grow.currentPhaseDay);
+    String weeks = String(settings.grow.currentPhaseWeek);
+    if (language == "de") {
+      html.replace("%CURRENTPHASE%", "<font color=\"lightblue\">Trocknung: Tage " + days + " / Woche " + weeks + "</font>");
+    } else {
+      html.replace("%CURRENTPHASE%", "<font color=\"lightblue\">Drying: day " + days + " / week " + weeks + "</font>");
+    }
+  } else {
+    html.replace("%CURRENTPHASE%", "");
+  }
+
+  html.replace("%CONTROLLERNAME%", settings.ui.boxName);
+  html.replace("%FWVERSION%", String(FW_VERSION));
+
+  // Replace placeholders in index_html.h
+  html.replace("%TARGETTEMPERATURE%", String(settings.grow.targetTemperature, 1));
+  html.replace("%LIGHTONTIME%", lightOnTime);
+  html.replace("%LIGHTDAYHOURS%", String(lightDayHours));
+  html.replace("%WATERTEMPERATURE%", String(DS18B20STemperature, 1));
+  html.replace("%LEAFTEMPERATURE%", String(settings.grow.offsetLeafTemperature, 1));
+  html.replace("%HUMIDITY%", String(cur.humidityPct, 0));
+  html.replace("%TARGETVPD%",  String(settings.grow.targetVPD, 2));
+  html.replace("%MINVPDMONITORING%", settings.grow.minVpdMonEnabled ? "checked" : "");
+  html.replace("%MINVPD%",  String(settings.grow.minVPD, 2));
+  html.replace("%VPDHYSTERESIS%",  String(settings.grow.vpdHysteresis, 2));
+
+  // Irrigation settings
+  html.replace("%TIMEPERTASK%", String(irrigation.timePerTask));
+  html.replace("%BETWEENTASKS%", String(irrigation.betweenTasks));
+  html.replace("%AMOUNTOFWATER%", String(irrigation.amountOfWater));
+  html.replace("%IRRIGATION%", String(irrigation.amount));
+
+  // Pump enable flags are rendered directly into the operating-settings checkboxes.
+  html.replace("%PUMP1_ENABLED_CHECKED%", irrigation.pumpEnabled[0] ? "checked" : "");
+  html.replace("%PUMP2_ENABLED_CHECKED%", irrigation.pumpEnabled[1] ? "checked" : "");
+  html.replace("%PUMP3_ENABLED_CHECKED%", irrigation.pumpEnabled[2] ? "checked" : "");
+  html.replace("%IRRIGATION_STOP_ON_FLOOD_CHECKED%", irrigation.stopOnFloodAlarm ? "checked" : "");
+
+  // Pump status controls are intentionally rendered fail-safe in index_html.h.
+  // JavaScript enables them only after /api/state has been loaded successfully.
+  // This avoids unnecessary full-page replacement work in the Async dashboard stream.
+
+  String minTankStr = String(irrigation.tank.min, 1); minTankStr.trim();
+  String maxTankStr = String(irrigation.tank.max, 1); maxTankStr.trim();
+  html.replace("%MINTANK%", minTankStr);
+  html.replace("%MAXTANK%", maxTankStr);
+
+  html.replace("%RELAYNAMES1%", String(settings.relay.name[0]));
+  html.replace("%ESPRELAY1_ENABLED_CHECKED%", settings.relay.schedule[0]. enabled ? "checked" : "");
+  html.replace("%ESPRELAY1_IFLIGHTOFF_CHECKED%", settings.relay.schedule[0].ifLightOff ? "checked" : "");
+  html.replace("%ESPRELAY1_ONMIN%", String(settings.relay.schedule[0].onMin));
+  html.replace("%ESPRELAY1_OFFMIN%", String(settings.relay.schedule[0].offMin));
+  html.replace("%RELAYNAMES2%", String(settings.relay.name[1]));
+  html.replace("%ESPRELAY2_ENABLED_CHECKED%", settings.relay.schedule[1]. enabled ? "checked" : "");
+  html.replace("%ESPRELAY2_IFLIGHTOFF_CHECKED%", settings.relay.schedule[1].ifLightOff ? "checked" : "");
+  html.replace("%ESPRELAY2_ONMIN%", String(settings.relay.schedule[1].onMin));
+  html.replace("%ESPRELAY2_OFFMIN%", String(settings.relay.schedule[1].offMin));
+  html.replace("%RELAYNAMES3%", String(settings.relay.name[2]));
+  html.replace("%ESPRELAY3_ENABLED_CHECKED%", settings.relay.schedule[2]. enabled ? "checked" : "");
+  html.replace("%ESPRELAY3_IFLIGHTOFF_CHECKED%", settings.relay.schedule[2].ifLightOff ? "checked" : "");
+  html.replace("%ESPRELAY3_ONMIN%", String(settings.relay.schedule[2].onMin));
+  html.replace("%ESPRELAY3_OFFMIN%", String(settings.relay.schedule[2].offMin));
+  html.replace("%RELAYNAMES4%", String(settings.relay.name[3]));
+  html.replace("%ESPRELAY4_ENABLED_CHECKED%", settings.relay.schedule[3]. enabled ? "checked" : "");
+  html.replace("%ESPRELAY4_IFLIGHTOFF_CHECKED%", settings.relay.schedule[3].ifLightOff ? "checked" : "");
+  html.replace("%ESPRELAY4_ONMIN%", String(settings.relay.schedule[3].onMin));
+  html.replace("%ESPRELAY4_OFFMIN%", String(settings.relay.schedule[3].offMin));
+  html.replace("%RELAYNAMES5%", String(settings.relay.name[4]));
+  html.replace("%ESPRELAY5_ENABLED_CHECKED%", settings.relay.schedule[4]. enabled ? "checked" : "");
+  html.replace("%ESPRELAY5_IFLIGHTOFF_CHECKED%", settings.relay.schedule[4].ifLightOff ? "checked" : "");
+  html.replace("%ESPRELAY5_ONMIN%", String(settings.relay.schedule[4].onMin));
+  html.replace("%ESPRELAY5_OFFMIN%", String(settings.relay.schedule[4].offMin));
+  html.replace("%RELAYNAMES6%", settings.relay.name[5]);
+  html.replace("%ESPRELAY6_ENABLED_CHECKED%", settings.relay.schedule[5].enabled ? "checked" : "");
+  html.replace("%ESPRELAY6_IFLIGHTOFF_CHECKED%", settings.relay.schedule[5].ifLightOff ? "checked" : "");
+  html.replace("%ESPRELAY6_ONMIN%", String(settings.relay.schedule[5].onMin));
+  html.replace("%ESPRELAY6_OFFMIN%", String(settings.relay.schedule[5].offMin));
+
+  html.replace("%HEATSRC0_SEL%", settings.heating.sourceType == 0 ? "selected" : "");
+  html.replace("%HEATSRC1_SEL%", settings.heating.sourceType == 1 ? "selected" : "");
+  html.replace("%HEATSRC2_SEL%", settings.heating.sourceType == 2 ? "selected" : "");
+
+  html.replace("%DBG_CHECKED%", debugLog ? "checked" : "");
+
+  html.replace("%GROWSTARTDATE%", String(startDate));
+  html.replace("%GROWFLOWERDATE%", String(startFlowering));
+  html.replace("%GROWDRAYINGDATE%", String(startDrying));
+
+  html.replace("%PHASE1_SEL%", settings.grow.currentPhase == 1 ? "selected" : "");
+  html.replace("%PHASE2_SEL%", settings.grow.currentPhase == 2 ? "selected" : "");
+  html.replace("%PHASE3_SEL%", settings.grow.currentPhase == 3 ? "selected" : "");
+
+  html.replace("%TARGETVPD%", String(settings.grow.targetVPD, 1));
+
+  html.replace("%HEATRELAY1_SEL%", settings.heating.Relay == 1 ? "selected" : "");
+  html.replace("%HEATRELAY2_SEL%", settings.heating.Relay == 2 ? "selected" : "");
+  html.replace("%HEATRELAY3_SEL%", settings.heating.Relay == 3 ? "selected" : "");
+  html.replace("%HEATRELAY4_SEL%", settings.heating.Relay == 4 ? "selected" : "");
+  html.replace("%HEATRELAY5_SEL%", settings.heating.Relay == 5 ? "selected" : "");
+  html.replace("%HEATRELAY6_SEL%", settings.heating.Relay == 6 ? "selected" : "");
+
+  html.replace("%SHELLYMAINIP%", settings.shelly.main.ip);
+  html.replace("%SHMAINSWKIND1%", settings.shelly.main.gen == 1 ? "selected" : "");
+  html.replace("%SHMAINSWKIND2%", settings.shelly.main.gen == 2 ? "selected" : "");
+  html.replace("%SHMAINSWKIND3%", settings.shelly.main.gen == 3 ? "selected" : "");
+
+  html.replace("%SHELLYLIGHTIP%", settings.shelly.light.ip);
+  html.replace("%SHLIGHTKIND1%", settings.shelly.light.gen == 1 ? "selected" : "");
+  html.replace("%SHLIGHTKIND2%", settings.shelly.light.gen == 2 ? "selected" : "");
+  html.replace("%SHLIGHTKIND3%", settings.shelly.light.gen == 3 ? "selected" : "");
+
+  html.replace("%SHELLYHUMIDIFIERIP%", settings.shelly.humidifier.ip);
+  html.replace("%SHHUMIDIFIERKIND1%", settings.shelly.humidifier.gen == 1 ? "selected" : "");
+  html.replace("%SHHUMIDIFIERKIND2%", settings.shelly.humidifier.gen == 2 ? "selected" : "");
+  html.replace("%SHHUMIDIFIERKIND3%", settings.shelly.humidifier.gen == 3 ? "selected" : "");
+
+  html.replace("%SHELLYHEATERIP%", settings.shelly.heater.ip);
+  html.replace("%SHHEATERKIND1%", settings.shelly.heater.gen == 1 ? "selected" : "");
+  html.replace("%SHHEATERKIND2%", settings.shelly.heater.gen == 2 ? "selected" : "");
+  html.replace("%SHHEATERKIND3%", settings.shelly.heater.gen == 3 ? "selected" : "");
+
+  html.replace("%SHELLYFANIP%", settings.shelly.fan.ip);
+  html.replace("%SHFANKIND1%", settings.shelly.fan.gen == 1 ? "selected" : "");
+  html.replace("%SHFANKIND2%", settings.shelly.fan.gen == 2 ? "selected" : "");
+  html.replace("%SHFANKIND3%", settings.shelly.fan.gen == 3 ? "selected" : "");
+
+  html.replace("%SHELLYEXHAUSTIP%", settings.shelly.exhaust.ip);
+  html.replace("%SHEXHAUSTKIND1%", settings.shelly.exhaust.gen == 1 ? "selected" : "");
+  html.replace("%SHEXHAUSTKIND2%", settings.shelly.exhaust.gen == 2 ? "selected" : "");
+  html.replace("%SHEXHAUSTKIND3%", settings.shelly.exhaust.gen == 3 ? "selected" : "");
+
+  html.replace("%SHELLYHEATMATIP%", settings.shelly.heatmat.ip);
+  html.replace("%SHHEATMATKIND1%", settings.shelly.heatmat.gen == 1 ? "selected" : "");
+  html.replace("%SHHEATMATKIND2%", settings.shelly.heatmat.gen == 2 ? "selected" : "");
+  html.replace("%SHHEATMATKIND3%", settings.shelly.heatmat.gen == 3 ? "selected" : "");
+
+  html.replace("%POWERPRICEKWH%", String(powerPriceKwhEur, 2));
+
+  html.replace("%SHUSER%", settings.shelly.username);
+  html.replace("%SHPASSWORD%", "");
+
+  html.replace("%FLOOD_ENABLED_CHECKED%", settings.flood.enabled ? "checked" : "");
+  html.replace("%FLOOD_TOKEN%", settings.flood.webhookToken);
+
+  html.replace("%BACKEND_HMAC_HIDDEN%", (settings.backendWrite.enabled && settings.backendWrite.secretHex.length() == 64) ? "" : "hidden");
+  html.replace("%BACKEND_WRITE_ENABLED_CHECKED%", settings.backendWrite.enabled ? "checked" : "");
+  html.replace("%BACKEND_WRITE_ALLOWED_IP%", settings.backendWrite.allowedIp);
+  html.replace("%BACKEND_WRITE_SECRET_PLACEHOLDER%", settings.backendWrite.secretHex.length() == 64
+      ? "Configured - leave empty to keep existing key"
+      : "Not configured - generate a key before enabling");
+
+
+
+  html.replace("%NTPSERVER%", ntpServer);
+  html.replace("%TZINFO%", tzInfo);
+  html.replace("%THEME%", theme);
+  html.replace("%LANGUAGE%", language);
+  html.replace("%TIMEFORMAT%", timeFormat);
+  html.replace("%UNIT%", unit);
+  html.replace("%DS18B20ENABLE%", DS18B20Enable);
+  html.replace("%DS18B20NAME%", DS18B20Name);
+
+  html.replace("%PUSHOVERENABLED%", pushoverEnabled);
+  html.replace("%PUSHOVERAPPKEY%", "");
+  html.replace("%PUSHOVERUSERKEY%", "");
+  html.replace("%PUSHOVERDEVICE%", pushoverDevice);
+  html.replace("%GOTIFYENABLED%", gotifyEnabled);
+  html.replace("%GOTIFYURL%", gotifyServer);
+  html.replace("%GOTIFYTOKEN%", "");
+
 }
+
+// The legacy TCP/80 HTML renderer was retired in v0.2.79.
+// Port 8080 is the only dashboard/AP-setup UI path.
 
 // Read stored preferences
 void readPreferences() {
@@ -264,48 +285,17 @@ void readPreferences() {
   // debug
   loadPrefBool(KEY_DEBUG_ENABLED, debugLog, false, true, "debugLog");
 
-  // active relay count
-#ifdef GT_BOARD_ESP32_S3_RELAY_6CH
-  loadPrefInt(KEY_RELAYCOUNT, activeRelayCount, 6, true, "activeRelayCount");
-  activeRelayCount = (activeRelayCount >= 6) ? 6 : 4;
-#else
-  loadPrefInt(KEY_RELAYCOUNT, activeRelayCount, 4, true, "activeRelayCount");
-  activeRelayCount = (activeRelayCount == 8) ? 8 : 4;
-#endif
+  // active relay count (4 or 8)
+  activeRelayCount = BOARD_RELAY_COUNT;
 
-  // Pump outputs have fixed hardware roles and therefore fixed names.
-  // Stored values for relay 1..3 are intentionally ignored.
-  for (int i = 0; i < PUMP_RELAY_COUNT; ++i) {
-    settings.relay.name[i] = FIXED_PUMP_RELAY_NAMES[i];
-    relayNames[i] = FIXED_PUMP_RELAY_NAMES[i];
+  // Pump names are fixed; preserve existing S3 control labels and normalize only old defaults.
+  for (int i = 0; i < 3; ++i) settings.relay.name[i] = "Pump " + String(i + 1);
+  const char* nameKeys[] = {KEY_RELAY_4, KEY_RELAY_5, KEY_RELAY_6};
+  for (int i = 3; i < BOARD_RELAY_COUNT; ++i) {
+    settings.relay.name[i] = normalizeControlRelayName(
+      prefGetStringOrDefault(preferences, nameKeys[i - 3], ""), i + 1);
   }
-
-  // General-purpose relay names remain user-configurable. Obsolete pump
-  // defaults from the previous layout are converted to Relay 4..6 in memory.
-  settings.relay.name[3] = normalizeControlRelayName(
-    preferences.getString(KEY_RELAY_4, ""),
-    4
-  );
-  relayNames[3] = settings.relay.name[3];
-
-  if (activeRelayCount >= 5) {
-    settings.relay.name[4] = normalizeControlRelayName(
-      preferences.getString(KEY_RELAY_5, ""),
-      5
-    );
-    relayNames[4] = settings.relay.name[4];
-  }
-
-  if (activeRelayCount >= 6) {
-    settings.relay.name[5] = normalizeControlRelayName(
-      preferences.getString(KEY_RELAY_6, ""),
-      6
-    );
-    relayNames[5] = settings.relay.name[5];
-  }
-
-  if (activeRelayCount >= 7) settings.relay.name[6] = preferences.getString(KEY_RELAY_7, "relay 7");
-  if (activeRelayCount >= 8) settings.relay.name[7] = preferences.getString(KEY_RELAY_8, "relay 8");
+  settings.pump1 = "Pump 1"; settings.pump2 = "Pump 2"; settings.pump3 = "Pump 3";
 
   // running settings
   loadPrefString(KEY_STARTDATE, startDate, "", true, "startDate");
@@ -320,40 +310,69 @@ void readPreferences() {
   loadPrefFloat(KEY_TARGETVPD, settings.grow.targetVPD, 1.0f, true, "settings.grow.targetVPD");
   loadPrefBool(KEY_MINVPD_MON, settings.grow.minVpdMonEnabled, false, true, "settings.grow.minVpdMonEnabled");
 
-  loadPrefFloat(KEY_MINVPD, settings.grow.minVPD, 0.75f, true, "settings.grow.minVPD");
+  // Backend write API is disabled by default. Never print the HMAC secret.
+  loadPrefBool(KEY_BACKEND_WRITE_ENABLED, settings.backendWrite.enabled, false, true, "settings.backendWrite.enabled");
+  loadPrefString(KEY_BACKEND_WRITE_IP, settings.backendWrite.allowedIp, "", true, "settings.backendWrite.allowedIp");
+  loadPrefString(KEY_BACKEND_WRITE_SECRET, settings.backendWrite.secretHex, "", false, "settings.backendWrite.secret");
+
+  // Offset min-VPD is a small subtraction from the target VPD. 0.75 was a
+  // stale historical default and is outside the dashboard/API range.
+  loadPrefFloat(KEY_MINVPD, settings.grow.minVPD, 0.06f, true, "settings.grow.minVPD");
   loadPrefFloat(KEY_HYSTERESIS, settings.grow.vpdHysteresis, 0.05f, true, "settings.grow.vpdHysteresis");
 
-  //load heating settings
+  // Keep runtime values compatible with the operating-settings form/API even
+  // when an old NVS entry contains a historical out-of-range value. Do not
+  // rewrite NVS during boot; the next explicit settings save persists the
+  // normalized value through the normal Phase-26 handoff.
+  if (!isfinite(settings.grow.minVPD) || settings.grow.minVPD < 0.0f || settings.grow.minVPD > 0.30f) {
+    logPrint("[PREFERENCES LOAD] settings.grow.minVPD normalized to 0.06 (legacy/out-of-range value)");
+    settings.grow.minVPD = 0.06f;
+  }
+  if (!isfinite(settings.grow.vpdHysteresis) || settings.grow.vpdHysteresis < 0.0f || settings.grow.vpdHysteresis > 0.10f) {
+    logPrint("[PREFERENCES LOAD] settings.grow.vpdHysteresis normalized to 0.05 (out-of-range value)");
+    settings.grow.vpdHysteresis = 0.05f;
+  }
+
+  // load heating settings
   loadPrefInt(KEY_HEATING_SOURCE, settings.heating.sourceType, 0, true, "heatingSource");
   loadPrefInt(KEY_HEATING_RELAY, settings.heating.Relay, 0, true, "heatingRelay");
-  // sanitize
+  loadPrefFloat(KEY_HEAT_HYSTERESIS, settings.heating.hysteresisC, 0.25f, true, "heatingHysteresisC");
+  loadPrefFloat(KEY_HEAT_PREDICT, settings.heating.predictSeconds, 180.0f, true, "heatingPredictSeconds");
+  loadPrefInt(KEY_HEAT_MIN_ON, settings.heating.minOnSeconds, 120, true, "heatingMinOnSeconds");
+  loadPrefInt(KEY_HEAT_MIN_OFF, settings.heating.minOffSeconds, 120, true, "heatingMinOffSeconds");
+
+  // Sanitize persisted values while preserving the historical defaults.
   if (settings.heating.sourceType < 0 || settings.heating.sourceType > 2) {
     settings.heating.sourceType = 0;
   }
-  if (
-    settings.heating.Relay != 0 &&
-    (
-      settings.heating.Relay < CONTROL_RELAY_FIRST ||
-      settings.heating.Relay > CONTROL_RELAY_LAST
-    )
-  ) {
-    settings.heating.Relay = 0;
+  if (settings.heating.sourceType == 1 && !isValidBoardHeatingRelay(settings.heating.Relay)) {
+    settings.heating.sourceType = 0;
   }
   if (settings.heating.sourceType != 1) {
     settings.heating.Relay = 0;
+  }
+  if (!isfinite(settings.heating.hysteresisC) ||
+      settings.heating.hysteresisC < 0.05f || settings.heating.hysteresisC > 2.0f) {
+    settings.heating.hysteresisC = 0.25f;
+  }
+  if (!isfinite(settings.heating.predictSeconds) ||
+      settings.heating.predictSeconds < 0.0f || settings.heating.predictSeconds > 600.0f) {
+    settings.heating.predictSeconds = 180.0f;
+  }
+  if (settings.heating.minOnSeconds < 30 || settings.heating.minOnSeconds > 1800) {
+    settings.heating.minOnSeconds = 120;
+  }
+  if (settings.heating.minOffSeconds < 30 || settings.heating.minOffSeconds > 1800) {
+    settings.heating.minOffSeconds = 120;
   }
 
   settings.grow.lightOnTime = lightOnTime;
   settings.grow.lightDayHours = lightDayHours;
 
   // relay schedules
-  // In S3 6CH mode, relays 1..3 are pumps and relays 4..6 are scheduled here.
-  const bool s3SixRelayMode = activeRelayCount >= CONTROL_RELAY_LAST;
-  const int firstScheduleRelay = s3SixRelayMode ? CONTROL_RELAY_FIRST : 1;
-  const int lastScheduleRelay  = s3SixRelayMode ? CONTROL_RELAY_LAST : activeRelayCount;
-
-  for (int relay = firstScheduleRelay; relay <= lastScheduleRelay; relay++) {
-    const int i = relay - 1;
+  // Load relay schedules into settings.relay.schedule[0..3]
+  for (int i = CONTROL_RELAY_FIRST_IDX; i <= CONTROL_RELAY_LAST_IDX; i++) {
+    int relay = i + 1;
 
     String keyEn = "relay_enable_" + String(relay);
     String keyILO = "ilo_" + String(relay);
@@ -363,21 +382,19 @@ void readPreferences() {
     (relay == 2) ? KEY_RELAY_START_2 :
     (relay == 3) ? KEY_RELAY_START_3 :
     (relay == 4) ? KEY_RELAY_START_4 :
-    (relay == 5) ? KEY_RELAY_START_5 :
-    KEY_RELAY_START_6;
+    (relay == 5) ? KEY_RELAY_START_5 : KEY_RELAY_START_6;
 
     const char* keyOff =
     (relay == 1) ? KEY_RELAY_END_1 :
     (relay == 2) ? KEY_RELAY_END_2 :
     (relay == 3) ? KEY_RELAY_END_3 :
     (relay == 4) ? KEY_RELAY_END_4 :
-    (relay == 5) ? KEY_RELAY_END_5 :
-    KEY_RELAY_END_6;
+    (relay == 5) ? KEY_RELAY_END_5 : KEY_RELAY_END_6;
 
-    settings.relay.schedule[i].enabled = preferences.getBool(keyEn.c_str(), false);
-    settings.relay.schedule[i].ifLightOff = preferences.getBool(keyILO.c_str(), false);
-    settings.relay.schedule[i].onMin = preferences.getInt(keyOn, 0);
-    settings.relay.schedule[i].offMin = preferences.getInt(keyOff, 0);
+    settings.relay.schedule[i].enabled = prefGetBoolOrDefault(preferences, keyEn.c_str(), false);
+    settings.relay.schedule[i].ifLightOff = prefGetBoolOrDefault(preferences, keyILO.c_str(), false);
+    settings.relay.schedule[i].onMin = prefGetIntOrDefault(preferences, keyOn, 0);
+    settings.relay.schedule[i].offMin = prefGetIntOrDefault(preferences, keyOff, 0);
   }
 
   // Shelly devices
@@ -398,11 +415,22 @@ void readPreferences() {
   loadPrefString(KEY_SHELLYEXHAUSTIP, settings.shelly.exhaust.ip, "", true, "Shelly Exhaust IP");
   loadPrefInt(KEY_SHELLYEXHAUSTGEN, settings.shelly.exhaust.gen, 0, true, "Shelly Exhaust Generation");
   loadPrefFloat(KEY_SHELLYEXHAUSTOFF, settings.shelly.exhaust.energyOffsetWh, 0.0f, true, "Shelly Exhaust Energy Offset");
+  loadPrefString(KEY_SHELLYHEATMATIP, settings.shelly.heatmat.ip, "", true, "Shelly Heat Mat IP");
+  loadPrefInt(KEY_SHELLYHEATMATGEN, settings.shelly.heatmat.gen, 0, true, "Shelly Heat Mat Generation");
+  loadPrefFloat(KEY_SHELLYHEATMATOFF, settings.shelly.heatmat.energyOffsetWh, 0.0f, true, "Shelly Heat Mat Energy Offset");
   loadPrefFloat(KEY_SHELLYFANOFF, settings.shelly.fan.energyOffsetWh, 0.0f, true, "Shelly Fan Energy Offset");
 
   // Shelly credentials (optional Basic Auth)
   loadPrefString(KEY_SHELLYUSERNAME, settings.shelly.username, "", true, "Shelly Username");
   loadPrefString(KEY_SHELLYPASSWORD, settings.shelly.password, "", false, "Shelly Password");
+
+  // Flood S Gen4 is event-driven. Only configuration and the last reported state are restored.
+  loadPrefBool(KEY_FLOOD_ENABLED, settings.flood.enabled, false, true, "Flood webhook enabled");
+  loadPrefString(KEY_FLOOD_TOKEN, settings.flood.webhookToken, "", false, "Flood webhook token");
+  loadPrefBool(KEY_FLOOD_KNOWN, floodState.known, false, true, "Flood state known");
+  loadPrefBool(KEY_FLOOD_ALARM, floodState.alarm, false, true, "Flood alarm");
+  loadPrefInt(KEY_FLOOD_BATTERY, floodState.batteryPct, -1, true, "Flood battery percent");
+  loadPrefString(KEY_FLOOD_LAST_SEEN, floodState.lastSeen, "", true, "Flood last seen");
 
   // Power price
   loadPrefFloat(KEY_POWER_PRICE_KWH, powerPriceKwhEur, 0.30f, true, "powerPriceKwhEur", 3);
@@ -414,6 +442,7 @@ void readPreferences() {
   loadPrefString(KEY_LANG, language, "de", true, "language");
   loadPrefString(KEY_THEME, theme, "light", true, "theme");
   loadPrefString(KEY_UNIT, unit, "metric", true, "unit");
+  settings.ui.unit = unit;
   loadPrefString(KEY_TFMT, timeFormat, "24h", true, "timeFormat");
   loadPrefBool(KEY_DS18B20ENABLE, DS18B20, false, true, "DS18B20Enable");
   DS18B20Enable = DS18B20 ? "checked" : "";
@@ -424,6 +453,12 @@ void readPreferences() {
   loadPrefFloat(KEY_AMOUNTOFWATER, irrigation.amountOfWater, 20, true, "amountOfWater");
   loadPrefFloat(KEY_IRRIGATION, irrigation.amount, 500, true, "irrigationAmount");
 
+  // Keep all pumps enabled by default so upgrades preserve the previous behavior.
+  loadPrefBool(KEY_PUMP1_ENABLED, irrigation.pumpEnabled[0], true, true, "pump1Enabled");
+  loadPrefBool(KEY_PUMP2_ENABLED, irrigation.pumpEnabled[1], true, true, "pump2Enabled");
+  loadPrefBool(KEY_PUMP3_ENABLED, irrigation.pumpEnabled[2], true, true, "pump3Enabled");
+  loadPrefBool(KEY_IRRIGATION_STOP_ON_FLOOD, irrigation.stopOnFloodAlarm, false, true, "irrigationStopOnFlood");
+
   loadPrefFloat(KEY_MINTANK, irrigation.tank.min, 0.0f, true, "minTank");
   loadPrefFloat(KEY_MAXTANK, irrigation.tank.max, 0.0f, true, "maxTank");
 
@@ -431,13 +466,13 @@ void readPreferences() {
   // notification settings
   loadPrefString(KEY_PUSHOVER, pushoverEnabled, "", true, "pushoverEnabled");
   if (pushoverEnabled == "checked") pushoverSent = true;
-  loadPrefString(KEY_PUSHOVERAPP, pushoverAppKey, "", true, "pushoverAppKey");
-  loadPrefString(KEY_PUSHOVERUSER, pushoverUserKey, "", true, "pushoverUserKey");
-  loadPrefString(KEY_PUSHOVERDEVICE, pushoverDevice, "", true, "pushoverDevice");
+  loadPrefString(KEY_PUSHOVERAPP, pushoverAppKey, "", false, "pushoverAppKey");
+  loadPrefString(KEY_PUSHOVERUSER, pushoverUserKey, "", false, "pushoverUserKey");
+  loadPrefString(KEY_PUSHOVERDEVICE, pushoverDevice, "", false, "pushoverDevice");
   loadPrefString(KEY_GOTIFY, gotifyEnabled, "", true, "gotifyEnabled");
   if (gotifyEnabled == "checked") gotifySent = true;
   loadPrefString(KEY_GOTIFYSERVER, gotifyServer, "", true, "gotifyServer");
-  loadPrefString(KEY_GOTIFYTOKEN, gotifyToken, "", true, "gotifyToken");
+  loadPrefString(KEY_GOTIFYTOKEN, gotifyToken, "", false, "gotifyToken");
 
   preferences.end();
 }
@@ -501,7 +536,7 @@ String readSensorData() {
     }
     sensors.requestTemperatures();
   }
-  
+
   unsigned long now = millis();
   struct tm timeinfo;
   char timeStr[32] = "";
@@ -513,9 +548,9 @@ String readSensorData() {
     if (now - previousMillis >= blinkInterval) {
       previousMillis = now;
       ledState = !ledState;
-#if STATUS_LED_PIN >= 0
+      #if STATUS_LED_PIN >= 0
       digitalWrite(STATUS_LED_PIN, ledState);
-#endif
+      #endif
     }
 
     if (now - lastRead >= READ_INTERVAL_MS) {
@@ -550,13 +585,13 @@ String readSensorData() {
     json += "\"curGrowPhase\":" + String(settings.grow.currentPhase) + ",\n";
   } else {
     json += "\"curGrowPhase\":null,\n";
-  } 
+  }
 
   if (!isnan(cur.temperatureC)) {
     json += "\"curTemperature\":" + String(cur.temperatureC, 1) + ",\n";
   } else {
     json += "\"curTemperature\":null,\n";
-  } 
+  }
 
   if (!isnan(cur.extTempC)) {
     json += "\"curDS18B20Se1\":" + String(cur.extTempC, 1) + ",\n";
@@ -578,18 +613,14 @@ String readSensorData() {
 
   json += "\"relays\":[";
   for (int i = 0; i < NUM_RELAYS; i++) {
-    bool on = false;
-    if (i < activeRelayCount && relayPins[i] >= 0) {
-      int state = digitalRead(relayPins[i]);
-      on = (state == HIGH);
-    }
+    int state = digitalRead(relayPins[i]);
+    bool on = (state == HIGH);
     json += (on ? "true" : "false");
     if (i < NUM_RELAYS - 1) json += ",";
   }
   json += "],\n";
-  
+
   if (!shelly.main.values.ok) {
-    logPrint("[API] MAIN SWITCH request not ok");
     json += "\"shellyMainSwitchStatus\":false,\n";
     json += "\"shellyMainSwitchPower\":null,\n";
     json += "\"shellyMainSwitchTotalWh\":null,\n";
@@ -604,10 +635,9 @@ String readSensorData() {
     json += "\"shellyMainSwitchCostEur\":" + String(mainCost, 2) + ",\n";
   } else {
     json += "\"shellyMainSwitchCostEur\":null,\n";
-  } 
+  }
 
   if (!shelly.light.values.ok) {
-    logPrint("[API] LIGHT request not ok");
     json += "\"shellyLightStatus\":false,\n";
     json += "\"shellyLightPower\":null,\n";
     json += "\"shellyLightTotalWh\":null,\n";
