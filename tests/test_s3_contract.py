@@ -62,6 +62,7 @@ int main(){
  for(int i=3;i<6;i++){reset();setRelay(i,true);assert(relayStates[i]&&writes==1);}
  for(int i: {-1,6,7,8}){reset();setRelay(i,true);assert(writes==0);}
  reset();mutexAvailable=false;setRelay(0,true);assert(writes==0);
+ reset();relayMutex=0;setRelay(0,true);assert(writes==0);setRelay(0,false);assert(writes==1);
 }
 '''
         code=code.replace('#include <cassert>','#include <cassert>\n#include <initializer_list>')

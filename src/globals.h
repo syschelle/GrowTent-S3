@@ -24,7 +24,6 @@
 #endif
 
 // -------------------- Constants --------------------
-#define MAX_RELAYS 8
 #define NUM_RELAYS MAX_RELAYS // keep compatibility in existing code
 
 // Irrigation pump mapping for the S3 six-relay board.

@@ -627,6 +627,7 @@ bool isRelayOn(int idx) {
 // set relay state by index (0-based) with mutex protection and update state array
 void setRelay(int idx, bool on) {
   if (idx < 0 || idx >= activeRelayCount || relayPins[idx] < 0) return;
+  if (on && isPumpRelayIndex(idx) && !relayMutex) return;
   const bool locked = relayMutex && xSemaphoreTake(relayMutex, pdMS_TO_TICKS(100)) == pdTRUE;
   if (relayMutex && !locked) { logPrint("[RELAY] mutex timeout in setRelay()"); return; }
   bool allowed = true;

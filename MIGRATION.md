@@ -31,7 +31,7 @@ Hardware-specific differences:
 - Pump indices are 0,1,2 (public relays 1,2,3), never 5,6,7.
 - Dedicated manual pulses: `POST /pump/1/triggerPump10s`, `/pump/2/triggerPump10s`, `/pump/3/triggerPump10s`.
 - Generic names, schedules, `/api/relay/N/state` and `/relay/N/toggle` are restricted to N=4,5,6. Pump paths through those APIs are rejected. Relays 7/8 do not exist.
-- Enabled flags are checked at queued action application and at the central GPIO setter. Stop requests and other active/armed pumps prevent a pump from starting. OFF remains permitted for disabled pumps.
+- Enabled flags are checked at queued action application and at the central GPIO setter. Stop requests, an absent/busy relay mutex and other active/armed pumps prevent a pump from starting. Automatic watering aborts if the GPIO setter refuses an output. OFF remains permitted for disabled pumps.
 - Schedules/heater never own pump outputs. Stale heater configurations pointing to pumps are disabled at boot.
 - Read-only state: `/api/state`, with `/state` as an equivalent alias, both at TCP/8080. TCP/80 is provisioning only.
 - OTA and generated manifest URLs point only to `syschelle/GrowTent-S3`. Never install a classic ESP32 image on this board.

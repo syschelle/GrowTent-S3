@@ -250,7 +250,8 @@ SemaphoreHandle_t logBufferMutex = nullptr;
 
 // Relays
 int activeRelayCount = BOARD_RELAY_COUNT;
-const int relayPins[NUM_RELAYS] = { 1, 2, 41, 42, 45, 46, -1, -1 };
+const int relayPins[NUM_RELAYS] = { BOARD_RELAY_PINS[0], BOARD_RELAY_PINS[1], BOARD_RELAY_PINS[2],
+  BOARD_RELAY_PINS[3], BOARD_RELAY_PINS[4], BOARD_RELAY_PINS[5], -1, -1 };
 bool relayStates[NUM_RELAYS] = { false };
 unsigned long relayOffTime[NUM_RELAYS] = {0};
 bool relayActive[NUM_RELAYS] = {false};

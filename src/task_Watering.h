@@ -174,6 +174,10 @@ void taskWatering(void *parameter) {
       }
 
       setRelay(relayIndex, true);
+      if (!isRelayOn(relayIndex)) {
+        requestIrrigationStop("pump output refused");
+        break;
+      }
 
       const bool pulseCompleted = irrigationDelayInterruptible(
         secondsToMilliseconds(irrigation.timePerTask)

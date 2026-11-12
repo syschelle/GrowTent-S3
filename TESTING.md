@@ -2,9 +2,9 @@
 
 ## Executed locally
 
-- `python tests/test_s3_contract.py`: four regression groups pass. Compiles and executes the actual `setRelay` implementation with mocked GPIO/FreeRTOS; covers disabled pumps, OFF after disable, stop latch, overlap with active/armed pumps, unavailable mutex and invalid outputs. Also checks actual browser function behavior for 4/5/6-only control, six unique output elements, fixed pump names, no pump schedules and S3 API/NVS/OTA mapping guards.
+- `python tests/test_s3_contract.py`: five regression groups pass. Compiles and executes the actual `setRelay` implementation with mocked GPIO/FreeRTOS; covers disabled pumps, OFF after disable, stop latch, overlap with active/armed pumps, unavailable mutex and invalid outputs. Also checks actual browser function behavior for 4/5/6-only control, six unique output elements, fixed pump names, no pump schedules and S3 API/NVS/OTA mapping guards.
 - Inline JavaScript syntax check and shell syntax checks are included in the host suite.
-- Full PlatformIO build: pending; update this result after the actual build completes.
+- Full PlatformIO S3 build: **PASS in GitHub Actions** for migration commit `0483c2e13c5de60c8c6feda880562245f0215153`, run [43268951794](https://github.com/syschelle/GrowTent-S3/actions/runs/43268951794). Firmware image created for `esp32s3`; RAM 56,116 / 327,680 bytes (17.1%), flash 1,694,077 / 1,966,080 bytes (86.2%). Subsequent commits run the same checks again; use the current PR checks as the authoritative head result. The local dependency registry returned intermittent 403 errors; the independent Actions build completed with the tracked configuration.
 
 Mocks do not verify electrical behavior, FreeRTOS timing, HTTP transport on ESP hardware or long-term concurrency. Existing upstream networking/security behavior was imported; it is not independently certified by these host tests.
 
