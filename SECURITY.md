@@ -1,4 +1,4 @@
-# Security — v0.5.5
+# Security — v0.5.6
 
 v0.5.5 fixes status localization and asset cache versioning. Only assets requested with the matching firmware version receive immutable caching; missing or obsolete versions use no-store. Irrigation/HMAC behavior is unchanged.
 
@@ -23,3 +23,7 @@ S3-specific controls reserve relays 1–3 exclusively for pumps. Generic relay c
 OTA assets are isolated to `syschelle/GrowTent-S3`. No release/tag or automatic device update is created by the migration PR. Review the selected hardware, partitions and recovery image before flashing. Existing LittleFS is never automatically formatted on mount failure.
 
 Report suspected vulnerabilities privately through the repository owner's available private channel rather than publishing keys or exploitable device details. A dedicated security contact address and supported production version policy are currently open.
+
+## v0.5.6 local editor
+
+GET/POST `/api/settings/irrigation-plan` uses the same trusted-LAN dashboard boundary as existing operating-setting routes, not backend HMAC authentication. Do not expose the dashboard directly to untrusted networks. POST accepts JSON with expected_revision, enabled, every_n_days and offset_after_light_on_min only. Last-run history is read-only. Local and authenticated backend mutations share one queue and NVS journal; revisions prevent stale dashboard overwrites. NVS writes remain on the main loop, with persistence confirmed before reporting applied. No keys are returned. Enabling local scheduling requires a valid clock; independent backend scheduling must be disabled.
