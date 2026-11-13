@@ -19,6 +19,8 @@ jobs:
       - run: python -m pip install platformio==6.2.0
       - run: node tests/test_local_plan_ui.mjs
       - run: node tests/test_local_plan_editor.mjs
+      - run: python tests/test_humidifier_fan.py
+      - run: node tests/test_humidifier_fan_ui.mjs
       - run: python tests/test_irrigation_plan.py
       - run: python tests/test_s3_contract.py
       - run: python -m platformio run -e esp32-s3-relay-6ch

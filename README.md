@@ -429,3 +429,7 @@ In Operating Settings, configure the local plan and press **Save plan** separate
 ## v0.5.10 backend integration
 
 See IRRIGATION_PLAN_API.md for protocol v2 and signed idempotent manual starts. Command claims persist before starts; unknown expired commands cannot run. Full manual cycles use the backend event stream and require a valid clock and event capacity even with scheduling disabled. Real-device power-failure, pump/phase interlock and push integration validation remain OPEN.
+
+## Humidifier fan coupling (v0.5.14)
+
+See [HUMIDIFIER_FAN.md](HUMIDIFIER_FAN.md) for setup, hourly Auto-Off caching, exclusive relay ownership and limitations.

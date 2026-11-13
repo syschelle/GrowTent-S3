@@ -36,6 +36,7 @@ bool relayStates[8]={}, relayActive[8]={};
 bool irrigationStopRequested=false;
 struct {bool pumpEnabled[3]={true,true,true};} irrigation;
 int relayMutex=1; bool mutexAvailable=true; int writes=0;
+int fanRelay=-1; bool humidifierFanOwnsRelay(int index){return index==fanRelay;}
 int xSemaphoreTake(int,int){return mutexAvailable;} void xSemaphoreGive(int){}
 int pdMS_TO_TICKS(int n){return n;} void logPrint(const char*){}
 void digitalWrite(int pin,int state){assert(pin>=0); (void)state; ++writes;}
@@ -61,6 +62,7 @@ int main(){
  }
  for(int i=3;i<6;i++){reset();setRelay(i,true);assert(relayStates[i]&&writes==1);}
  for(int i: {-1,6,7,8}){reset();setRelay(i,true);assert(writes==0);}
+ reset();fanRelay=3;setRelay(3,true);assert(writes==0);setRelay(3,false);assert(writes==0);fanRelay=-1;
  reset();mutexAvailable=false;setRelay(0,true);assert(writes==0);
  reset();relayMutex=0;setRelay(0,true);assert(writes==0);setRelay(0,false);assert(writes==1);
 }

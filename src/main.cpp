@@ -3457,6 +3457,7 @@ static void clearAsyncHeatingOutputWriteReservation() {
 }
 
 static bool isValidHeatingOutputConfig(int sourceType, int relay) {
+  if (sourceType==1 && humidifierFanOwnsRelay(relay-1)) return false;
   if (sourceType < 0 || sourceType > 2) return false;
   if (sourceType == 1) {
     return isValidBoardHeatingRelay(relay);
@@ -3763,8 +3764,8 @@ static void processAsyncHeatingOutputApply() {
     settings.heating.sourceType != pending.sourceType ||
     settings.heating.Relay != pending.relay;
 
-  bool outputsSafe = true;
-  if (changesRuntime && settings.heating.sourceType != 0) {
+  bool outputsSafe = isValidHeatingOutputConfig(pending.sourceType,pending.relay);
+  if (outputsSafe && changesRuntime && settings.heating.sourceType != 0) {
     outputsSafe = safelyForceHeatingOutputOff(
       settings.heating.sourceType, settings.heating.Relay, "previous-source");
   }
@@ -4549,7 +4550,7 @@ static void sendAsyncRelayActionState(AsyncWebServerRequest* request, uint8_t id
   const bool heaterAssigned = active && settings.heating.sourceType == 1 &&
                               settings.heating.Relay == (int)idx + 1;
   const bool safeForAutomatedOffNoop = active && stateReadable && !state &&
-                                       !scheduleEnabled && !heaterAssigned;
+                                       !scheduleEnabled && !heaterAssigned && !humidifierFanOwnsRelay(idx);
 
   String json;
   json.reserve(640);
@@ -4559,6 +4560,7 @@ static void sendAsyncRelayActionState(AsyncWebServerRequest* request, uint8_t id
   json += ",\"state\":"; json += state ? "true" : "false";
   json += ",\"scheduleEnabled\":"; json += scheduleEnabled ? "true" : "false";
   json += ",\"heaterAssigned\":"; json += heaterAssigned ? "true" : "false";
+  json += ",\"humidifierFanOwned\":"; json += humidifierFanOwnsRelay(idx) ? "true" : "false";
   json += ",\"safeForAutomatedOffNoop\":"; json += safeForAutomatedOffNoop ? "true" : "false";
   json += ",\"pending\":"; json += pending ? "true" : "false";
   json += ",\"pendingRequestId\":" + String(pendingId);
@@ -4584,6 +4586,12 @@ static void queueAsyncRelayAction(AsyncWebServerRequest* request,
                                   bool toggle,
                                   bool noTransitionOnly) {
   if (!request) return;
+  if (humidifierFanOwnsRelay(idx)) {
+    AsyncWebServerResponse* response = request->beginResponse(
+      409, "application/json; charset=utf-8",
+      "{\"ok\":false,\"err\":\"relay_owned_by_humidifier_fan\"}");
+    addAsyncCommonHeaders(response, false);request->send(response);return;
+  }
   if (!asyncRelayActionActive(idx)) {
     AsyncWebServerResponse* response = request->beginResponse(
       !isControlRelayIndex(idx) ? 404 : 409,
@@ -4730,7 +4738,7 @@ static void processAsyncRelayActionApply() {
   }
   if (!hasPending) return;
 
-  if (!asyncRelayActionActive(pending.relayIndex)) {
+  if (!asyncRelayActionActive(pending.relayIndex) || humidifierFanOwnsRelay(pending.relayIndex)) {
     ++g_asyncRelayActionApplyFailures;
     g_asyncRelayActionLastFailedId = pending.requestId;
     logPrint("[ASYNC][RELAY] apply FAILED id=" + String(pending.requestId) +
@@ -8503,9 +8511,11 @@ static void handleAsyncHealth(AsyncWebServerRequest* request) {
 }
 
 #include "irrigation_plan_impl.h"
+#include "humidifier_fan_impl.h"
 
 static void registerAsyncPhase32Routes() {
   configureIrrigationPlanRoutes();
+  configureHumidifierFanRoutes();
   asyncServer.on("/", AsyncWebRequestMethod::HTTP_GET, handleAsyncRoot);
 
   // Phase 25 transport correction (v0.2.76): serve static assets through
@@ -8936,6 +8946,7 @@ void setup() {
   // and write them back before the deferred initialization task restored NVS values.
   readPreferences();
   irrigationPlanInit();
+  humidifierFanInit();
   logPrint("[BOOT] Persistent settings loaded before web server start");
   
   // Initialize relay outputs ASAP (prevent random toggles)
@@ -9110,6 +9121,7 @@ void loop() {
   // application into exclusive OTA mode; once requested, the normal runtime
   // performs no further controller/network/storage work until reboot.
   otaProcessQueue();
+  humidifierFanTick(); // Force OFF before entering exclusive OTA mode.
   if (processOtaExclusivePlatformShutdown()) {
     delay(1);
     return;
@@ -9137,6 +9149,7 @@ void loop() {
   processAsyncStorageActionApply();
   processAsyncWateringActionApply();
   irrigationPlanTick();
+  humidifierFanTick();
 
   // Observe WiFi link state once per second so even short disconnects become visible
   // in the system log. This is intentionally separate from the slower reconnect policy.
