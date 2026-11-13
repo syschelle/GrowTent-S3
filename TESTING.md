@@ -1,4 +1,4 @@
-# Testing — v0.5.5
+# Testing — v0.5.6
 
 ## Local plan status UI
 
@@ -78,3 +78,7 @@ bash tests/test_ota_transport.sh <device-ip> --normal
 ```
 
 The large classic ESP32 mutation suite is not copied blindly: it assumes 4/8 outputs and different pump/control numbers. The focused S3 suite covers the adapted contract; complete on-device migration gates are still required.
+
+## v0.5.6 editor coverage
+
+`node tests/test_local_plan_editor.mjs` exercises the shipped renderer/save functions with a mock DOM/HTTP transport: history display, no synthetic date, unsaved edits, revision conflicts, invalid bounds, persistence acknowledgement, stale polling responses, language and network errors. Contract checks cover queue/auth separation and absence of flash writes in Async callbacks. Full board builds and schedule parser tests run in CI. Hardware/reboot, simultaneous real backend writes and browser checks remain OPEN.
