@@ -185,6 +185,7 @@ const char* htmlPage = R"rawliteral(
       <div class="tile">
         <h2 data-i18n="status.irrigation">Irrigation</h2>
         <p id="localIrrigationPlanStatus" role="status"><span data-i18n="status.localPlan.loading">Lokaler Plan: Status wird geladen …</span></p>
+        <p id="localIrrigationNextStatus" role="status">Nächste Bewässerung: —</p>
          <div class="relay-row" id="irrigationRelayRow">
           <div class="relay-card irrigation" data-relay="1" id="irrigationRelay1">
             <div class="relay-title" data-i18n="status.irrigationRelay1">Pump 1 (Relay 1)</div>
@@ -570,6 +571,7 @@ const char* htmlPage = R"rawliteral(
               <label for="localPlanLast" data-i18n="plan.last">Letzte Bewässerung</label>
               <input id="localPlanLast" type="date">
             </div>
+            <p class="local-plan-next" style="grid-column:1 / -1"><strong data-i18n="plan.next">Nächste Bewässerung</strong>: <output id="localPlanNext">—</output></p>
             <p class="hint" data-i18n="plan.hint">Trocknung sperrt die Bewässerung automatisch.</p>
             <button type="button" id="localPlanSave" data-i18n="plan.save">Plan speichern</button>
             <p id="localPlanSaveStatus" role="status" aria-live="polite"></p>
