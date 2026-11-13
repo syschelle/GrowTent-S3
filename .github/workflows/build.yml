@@ -20,6 +20,7 @@ jobs:
       - run: python tests/test_irrigation_plan.py
       - run: python tests/test_s3_contract.py
       - run: python -m platformio run -e esp32-s3-relay-6ch
+      - run: python tests/test_irrigation_schedule_parser.py .pio/libdeps/esp32-s3-relay-6ch/ArduinoJson/src
       - uses: actions/upload-artifact@v4
         with:
           name: firmware-test-build

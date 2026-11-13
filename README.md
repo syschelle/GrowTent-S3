@@ -8,7 +8,7 @@ GrowTent reads temperature and humidity, computes VPD (Vapor Pressure Deficit), 
 
 > **Important:** This repository is the firmware channel for ESP32-S3 relay hardware only. Classic ESP32 boards should use the original `syschelle/GrowTent` repository.
 
-## Current adaptation: v0.5.3
+## Current development: v0.5.4
 
 The current migration uses GrowTent **v0.5.3**, commit `55429b128be26f4f722bc67fdff3555f5f967a94`, with the S3-specific six-relay hardware contract. **Hardware validation is pending.**
 
