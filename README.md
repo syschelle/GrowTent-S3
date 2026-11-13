@@ -15,7 +15,7 @@ The current migration uses GrowTent **v0.5.3**, commit `55429b128be26f4f722bc67f
 - [Migration scope, settings compatibility and rollback](MIGRATION.md)
 - [Testing and open hardware gates](TESTING.md)
 - [Security policy and limitations](SECURITY.md)
-- [Latest release notes](RELEASE_NOTES_v0.5.8.md)
+- [Latest release notes](RELEASE_NOTES_v0.5.9.md)
 
 Build: `python -m platformio run -e esp32-s3-relay-6ch`.
 Dashboard/API: `http://<device-ip>:8080/`; read-only state at `/api/state` and `/state`.
