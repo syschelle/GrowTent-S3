@@ -15,7 +15,7 @@ The current migration uses GrowTent **v0.5.3**, commit `55429b128be26f4f722bc67f
 - [Migration scope, settings compatibility and rollback](MIGRATION.md)
 - [Testing and open hardware gates](TESTING.md)
 - [Security policy and limitations](SECURITY.md)
-- [Latest release notes](RELEASE_NOTES_v0.5.3.md)
+- [Latest release notes](RELEASE_NOTES_v0.5.4.md)
 
 Build: `python -m platformio run -e esp32-s3-relay-6ch`.
 Dashboard/API: `http://<device-ip>:8080/`; read-only state at `/api/state` and `/state`.
@@ -23,6 +23,10 @@ The old synchronous dashboard has been replaced by the upstream AsyncWebServer i
 Pump relays 1–3 cannot be used for heater/schedule/general-toggle actions; these are available only on relays 4–6.
 
 ---
+
+## Local irrigation planning (v0.5.4)
+
+Firmware-side autonomous scheduling is prepared; backend integration follows separately. The local plan is disabled by default. See [the HMAC plan/event API and safety contract](IRRIGATION_PLAN_API.md), [testing](TESTING.md) and [security](SECURITY.md).
 
 ## 🚀 Features
 
