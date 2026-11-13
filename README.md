@@ -433,3 +433,5 @@ See IRRIGATION_PLAN_API.md for protocol v2 and signed idempotent manual starts. 
 ## Humidifier fan coupling (v0.5.14)
 
 See [HUMIDIFIER_FAN.md](HUMIDIFIER_FAN.md) for setup, hourly Auto-Off caching, exclusive relay ownership and limitations.
+
+In v0.5.15, the coupled fan relay’s scheduling controls are disabled and marked in the operating-settings UI. Existing minute values are retained and restored when coupling is removed.

@@ -3393,6 +3393,7 @@ window.saveRunsettingsAll = async function () {
 
     const relaySchedules = [];
     for (let relay = 4; relay <= maxRelay; relay++) {
+      if(document.getElementById(`espRelay${relay}Row`)?.dataset.humidifierFanOwned==='true')continue;
       const onMinRaw = parseInt(document.getElementById(`espRelay${relay}OnMin`)?.value || "0", 10);
       const offMinRaw = parseInt(document.getElementById(`espRelay${relay}OffMin`)?.value || "0", 10);
       relaySchedules.push({
@@ -3762,6 +3763,28 @@ if(document.readyState==='loading'){
     if(!select || !save || !state || !message)return;
     let dirty=false,busy=false,last=null;
     const text=(de,en)=>(document.documentElement.lang || localStorage.getItem('lang') || 'de').startsWith('en')?en:de;
+    const scheduleLocks=new Map();
+    function renderScheduleLock(relay){
+      document.querySelectorAll('.runsettings-relay-row').forEach(row=>{
+        const owned=row.id===`espRelay${relay}Row` && relay>0;
+        row.classList.toggle('humidifier-fan-owned',owned);
+        row.dataset.humidifierFanOwned=String(owned);
+        row.setAttribute('aria-disabled',String(owned));
+        row.querySelectorAll('input,select,button').forEach(control=>{
+          if(owned){
+            if(!scheduleLocks.has(control))scheduleLocks.set(control,control.disabled);
+            control.disabled=true;
+          }else if(scheduleLocks.has(control)){
+            control.disabled=scheduleLocks.get(control);scheduleLocks.delete(control);
+          }
+        });
+        let note=row.querySelector('.fan-schedule-lock-note');
+        if(owned){
+          if(!note){note=document.createElement('small');note.className='fan-schedule-lock-note';row.appendChild(note);}
+          note.textContent=text('Durch Fan-Kopplung gesteuert – Zeitsteuerung pausiert.','Controlled by humidifier fan coupling – relay schedule paused.');
+        }else if(note){note.remove();}
+      });
+    }
     const endpoint='/api/settings/humidifier-fan';
     async function request(options){
       const response=await fetch(endpoint,{cache:'no-store',...options});
@@ -3771,6 +3794,7 @@ if(document.readyState==='loading'){
     }
     function render(value){
       last=value;
+      renderScheduleLock(value.relay);
       if(!dirty){
         const options=[0,...value.availableRelays];
         if(!options.includes(value.relay))options.push(value.relay);
