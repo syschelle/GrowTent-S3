@@ -15,7 +15,7 @@ The current migration uses GrowTent **v0.5.3**, commit `55429b128be26f4f722bc67f
 - [Migration scope, settings compatibility and rollback](MIGRATION.md)
 - [Testing and open hardware gates](TESTING.md)
 - [Security policy and limitations](SECURITY.md)
-- [Latest release notes](RELEASE_NOTES_v0.5.6.md)
+- [Latest release notes](RELEASE_NOTES_v0.5.7.md)
 
 Build: `python -m platformio run -e esp32-s3-relay-6ch`.
 Dashboard/API: `http://<device-ip>:8080/`; read-only state at `/api/state` and `/state`.
@@ -424,4 +424,4 @@ Apache-2.0
 
 ### Local irrigation plan editor (v0.5.6)
 
-In Operating Settings, configure the local plan and press **Save plan** separately. Last watering is read-only. Disable independent backend scheduling before enabling the ESP plan. Backend HMAC APIs remain available and share the same revisioned persistent plan.
+In Operating Settings, configure the local plan and press **Save plan** separately. The last-watering date can be transferred from known backend history; existing history cannot be cleared or moved back. Disable independent backend scheduling before enabling the ESP plan. Backend HMAC APIs remain available and share the same revisioned persistent plan.
