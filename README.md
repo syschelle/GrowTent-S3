@@ -442,4 +442,4 @@ Shared credentials, seven device-role cards and Flood S Gen4 settings now use th
 
 ## Compact Shelly settings (v0.5.17)
 
-Device function, IP and generation now form aligned rows. The light plan has its own section; credentials and Flood settings can be expanded when needed. All settings still use the same save button.
+Device function, IP and generation now form aligned rows. The light plan has its own section; credentials and Flood settings are always visible (v0.5.18). All settings still use the same save button.
