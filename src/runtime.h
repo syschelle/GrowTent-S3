@@ -5,6 +5,7 @@
 #include <WString.h>
 #include <Preferences.h>
 #include "preferences_safe.h"
+#include "climate_safety.h"
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
@@ -563,18 +564,27 @@ String readSensorData() {
       // === STORE RAW VALUES ===
       cur.temperatureRawC = rawTemp;
       cur.humidityRawPct  = rawHum;
-      cur.vpdRawKpa       = calcVPD(cur.temperatureRawC, offsetLeafTemperature, cur.humidityRawPct);
 
-      // === SMOOTHING ===
-      updateSmoothedClimate(rawTemp, rawHum);
+      const bool rawValid = isfinite(rawTemp) && isfinite(rawHum) && rawHum >= 0.0f && rawHum <= 100.0f;
+      if (rawValid) {
+        cur.vpdRawKpa = calcVPD(cur.temperatureRawC, offsetLeafTemperature, cur.humidityRawPct);
+        // === SMOOTHING ===
+        updateSmoothedClimate(rawTemp, rawHum);
 
-      // === CALCULATE SMOOTHED VPD ===
-      cur.vpdSmoothedKpa = calcVPD(cur.temperatureSmoothedC, offsetLeafTemperature, cur.humiditySmoothedPct);
+        // === CALCULATE SMOOTHED VPD ===
+        cur.vpdSmoothedKpa = calcVPD(cur.temperatureSmoothedC, offsetLeafTemperature, cur.humiditySmoothedPct);
 
-      // === USE SMOOTHED VALUES FOR SYSTEM ===
-      cur.temperatureC = cur.temperatureSmoothedC;
-      cur.humidityPct  = cur.humiditySmoothedPct;
-      cur.vpdKpa       = cur.vpdSmoothedKpa;
+        // === USE SMOOTHED VALUES FOR SYSTEM ===
+        cur.temperatureC = cur.temperatureSmoothedC;
+        cur.humidityPct  = cur.humiditySmoothedPct;
+        cur.vpdKpa       = cur.vpdSmoothedKpa;
+        const bool controlValid = isfinite(cur.temperatureC) && isfinite(cur.humidityPct) && isfinite(cur.vpdKpa);
+        climateRecordSample(controlValid, millis());
+        if (!controlValid) cur.temperatureC = cur.humidityPct = cur.vpdKpa = NAN;
+      } else {
+        climateRecordSample(false, millis());
+        cur.temperatureC = cur.humidityPct = cur.vpdKpa = cur.vpdRawKpa = NAN;
+      }
     }
   }
 

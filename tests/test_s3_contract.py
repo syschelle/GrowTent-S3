@@ -34,14 +34,18 @@ constexpr int NUM_RELAYS=8, HIGH=1, LOW=0, pdTRUE=1;
 int activeRelayCount=6; int relayPins[]={1,2,41,42,45,46,-1,-1};
 bool relayStates[8]={}, relayActive[8]={};
 bool irrigationStopRequested=false;
+struct {struct {int sourceType=0,Relay=0;} heating;} settings;
+bool climateReadingsFresh(){return true;}
+int gpio[64]={};
 struct {bool pumpEnabled[3]={true,true,true};} irrigation;
 int relayMutex=1; bool mutexAvailable=true; int writes=0;
 int fanRelay=-1; bool humidifierFanOwnsRelay(int index){return index==fanRelay;}
 int xSemaphoreTake(int,int){return mutexAvailable;} void xSemaphoreGive(int){}
 int pdMS_TO_TICKS(int n){return n;} void logPrint(const char*){}
-void digitalWrite(int pin,int state){assert(pin>=0); (void)state; ++writes;}
-'''+function(read('src/function.h'),'void setRelay(int idx, bool on)')+'''
-void reset(){for(int i=0;i<8;i++){relayStates[i]=false;relayActive[i]=false;} for(int i=0;i<3;i++)irrigation.pumpEnabled[i]=true; irrigationStopRequested=false; writes=0;mutexAvailable=true;}
+void digitalWrite(int pin,int state){assert(pin>=0);gpio[pin]=state;++writes;}
+int digitalRead(int pin){return gpio[pin];}
+'''+function(read('src/function.h'),'bool setRelay(int idx, bool on)')+'''
+void reset(){for(int i=0;i<64;i++)gpio[i]=0;for(int i=0;i<8;i++){relayStates[i]=false;relayActive[i]=false;} for(int i=0;i<3;i++)irrigation.pumpEnabled[i]=true; irrigationStopRequested=false; writes=0;mutexAvailable=true;}
 int main(){
  for(int i=-2;i<=9;i++){
    assert(isControlRelayIndex(i)==(i>=3&&i<=5));
