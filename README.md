@@ -445,3 +445,7 @@ Shared credentials, seven device-role cards and Flood S Gen4 settings now use th
 Device function, IP and generation now form aligned rows. The light plan has its own section; credentials and Flood settings are always visible (v0.5.18). All settings still use the same save button.
 
 In v0.5.19, irrigation-plan status spacing is compact and the Auto-Off explanation is removed from the fan settings UI. Controller behavior remains unchanged; [HUMIDIFIER_FAN.md](HUMIDIFIER_FAN.md) retains the technical details.
+
+## Push settings layout (v0.5.20)
+
+Pushover and Gotify now have compact, permanently visible provider sections, header enable switches and responsive field rows. Existing save, test-notification and restart behavior remains unchanged.
