@@ -449,3 +449,7 @@ In v0.5.19, irrigation-plan status spacing is compact and the Auto-Off explanati
 ## Push settings layout (v0.5.20)
 
 Pushover and Gotify now have compact, permanently visible provider sections, header enable switches and responsive field rows. Existing save, test-notification and restart behavior remains unchanged.
+
+## Pump OFF retries and climate freshness (v0.5.21)
+
+Pump stop/Auto-Off requests remain armed until GPIO OFF is confirmed. Invalid climate measurements immediately disable heater/humidifier ON commands; missing fresh BME data expires after 30 seconds. The main loop retries a local heater OFF, while the existing Shelly worker sends fault-only, rate-limited OFF requests for the humidifier and a configured Shelly heating source. No additional normal-operation polling is added. New diagnostic state keys are `sensors.climate.fresh`, `sensors.climate.status` (`unavailable`, `invalid`, `stale`, `ok`) and `sensors.climate.ageMs` (null until the first valid reading). Invalid/stale temperature, humidity and VPD values are returned as JSON null. Control resumes after valid measurements return. GPIO feedback does not measure relay contacts; a disconnected Shelly cannot receive an OFF command. See RELEASE_NOTES_v0.5.21.md and TESTING.md.
