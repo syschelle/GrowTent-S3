@@ -461,3 +461,7 @@ Status failures immediately make the corresponding Shelly reading unavailable; o
 ## VPD filter isolation (v0.5.23)
 
 Raw VPD is calculated directly from raw climate readings without changing filter state. The central control VPD retains its dedicated alpha-0.10 filter after Adaptive Climate Smoothing. API field names and controller thresholds remain unchanged. See RELEASE_NOTES_v0.5.23.md.
+
+## Compact system settings (v0.5.24)
+
+System settings use six permanently open cards: Device (including electricity price), Display, Time (including the POSIX timezone-list link), DS18B20 sensor, Backend access (HMAC) and Relay names. The layout adapts to mobile and supports German/English plus light/dark themes. Existing save behavior and secret retention are unchanged. The S3 board remains fixed at six channels with pump outputs 1–3 reserved.
