@@ -439,3 +439,7 @@ In v0.5.15, the coupled fan relay’s scheduling controls are disabled and marke
 ## Shelly settings layout (v0.5.16)
 
 Shared credentials, seven device-role cards and Flood S Gen4 settings now use the operating-settings panel style. Light schedule fields have individual labels. Responsive columns collapse to one on mobile. Existing save, detection and webhook behavior is retained.
+
+## Compact Shelly settings (v0.5.17)
+
+Device function, IP and generation now form aligned rows. The light plan has its own section; credentials and Flood settings can be expanded when needed. All settings still use the same save button.
