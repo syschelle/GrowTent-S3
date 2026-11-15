@@ -15,7 +15,7 @@ The current migration uses GrowTent **v0.5.3**, commit `55429b128be26f4f722bc67f
 - [Migration scope, settings compatibility and rollback](MIGRATION.md)
 - [Testing and open hardware gates](TESTING.md)
 - [Security policy and limitations](SECURITY.md)
-- [Latest release notes](RELEASE_NOTES_v0.5.13.md)
+- [Latest release notes](RELEASE_NOTES_v0.5.24.md)
 
 Build: `python -m platformio run -e esp32-s3-relay-6ch`.
 Dashboard/API: `http://<device-ip>:8080/`; read-only state at `/api/state` and `/state`.
@@ -452,7 +452,7 @@ Pushover and Gotify now have compact, permanently visible provider sections, hea
 
 ## Pump OFF retries and climate freshness (v0.5.21)
 
-Pump stop/Auto-Off requests remain armed until GPIO OFF is confirmed. Invalid climate measurements immediately disable heater/humidifier ON commands; missing fresh BME data expires after 30 seconds. The main loop retries a local heater OFF, while the existing Shelly worker sends fault-only, rate-limited OFF requests for the humidifier and a configured Shelly heating source. No additional normal-operation polling is added. New diagnostic state keys are `sensors.climate.fresh`, `sensors.climate.status` (`unavailable`, `invalid`, `stale`, `ok`) and `sensors.climate.ageMs` (null until the first valid reading). Invalid/stale temperature, humidity and VPD values are returned as JSON null. Control resumes after valid measurements return. GPIO feedback does not measure relay contacts; a disconnected Shelly cannot receive an OFF command. See RELEASE_NOTES_v0.5.22.md and TESTING.md.
+Pump stop/Auto-Off requests remain armed until GPIO OFF is confirmed. Invalid climate measurements immediately disable heater/humidifier ON commands; missing fresh BME data expires after 30 seconds. The main loop retries a local heater OFF, while the existing Shelly worker sends fault-only, rate-limited OFF requests for the humidifier and a configured Shelly heating source. No additional normal-operation polling is added. New diagnostic state keys are `sensors.climate.fresh`, `sensors.climate.status` (`unavailable`, `invalid`, `stale`, `ok`) and `sensors.climate.ageMs` (null until the first valid reading). Invalid/stale temperature, humidity and VPD values are returned as JSON null. Control resumes after valid measurements return. GPIO feedback does not measure relay contacts; a disconnected Shelly cannot receive an OFF command. See [RELEASE_NOTES_v0.5.22.md](https://github.com/syschelle/GrowTent-S3/blob/f9516f2e49c35698a93573db1711a8988b77e37a/RELEASE_NOTES_v0.5.22.md) and TESTING.md.
 
 ## Shelly freshness and notification encoding (v0.5.22)
 
@@ -460,8 +460,14 @@ Status failures immediately make the corresponding Shelly reading unavailable; o
 
 ## VPD filter isolation (v0.5.23)
 
-Raw VPD is calculated directly from raw climate readings without changing filter state. The central control VPD retains its dedicated alpha-0.10 filter after Adaptive Climate Smoothing. API field names and controller thresholds remain unchanged. See RELEASE_NOTES_v0.5.23.md.
+Raw VPD is calculated directly from raw climate readings without changing filter state. The central control VPD retains its dedicated alpha-0.10 filter after Adaptive Climate Smoothing. API field names and controller thresholds remain unchanged. See [RELEASE_NOTES_v0.5.23.md](https://github.com/syschelle/GrowTent-S3/blob/f9516f2e49c35698a93573db1711a8988b77e37a/RELEASE_NOTES_v0.5.23.md).
 
 ## Compact system settings (v0.5.24)
 
 System settings use six permanently open cards: Device (including electricity price), Display, Time (including the POSIX timezone-list link), DS18B20 sensor, Backend access (HMAC) and Relay names. The layout adapts to mobile and supports German/English plus light/dark themes. Existing save behavior and secret retention are unchanged. The S3 board remains fixed at six channels with pump outputs 1–3 reserved.
+
+## Release notes policy
+
+Keep exactly one versioned release-notes file in the repository root: `RELEASE_NOTES_<current-version>.md`, matching `FW_VERSION` in `src/build_version.h`. When bumping the version, replace the previous file rather than accumulating notes. Historical notes remain available in Git history and published GitHub Releases. Never delete tags/releases or rewrite Git history for this cleanup.
+
+Run `python scripts/check_release_notes.py` before pushing. Branch/PR and release builds enforce this invariant; tag builds also require the tag to match the source version.
